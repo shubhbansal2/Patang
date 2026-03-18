@@ -62,6 +62,10 @@ const subscriptionV2Schema = new mongoose.Schema({
     rejectionReason: {
         type: String,
         default: null
+    },
+    reviewComments: {
+        type: String,
+        default: null
     }
 }, { timestamps: true });
 

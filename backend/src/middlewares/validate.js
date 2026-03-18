@@ -105,12 +105,12 @@ export const validateAdminAction = (req, res, next) => {
  * Validate admin subscription action (approve/reject).
  */
 export const validateSubscriptionAction = (req, res, next) => {
-    const { action } = req.body;
+    const { action, rejectionReason, comments } = req.body;
     if (!action || !['approve', 'reject'].includes(action)) {
         return errorResponse(res, 400, 'VALIDATION_ERROR', 'action must be approve or reject');
     }
-    if (action === 'reject' && !req.body.rejectionReason) {
-        return errorResponse(res, 400, 'VALIDATION_ERROR', 'rejectionReason is required when rejecting');
+    if (action === 'reject' && !rejectionReason && !comments) {
+        return errorResponse(res, 400, 'VALIDATION_ERROR', 'rejectionReason or comments is required when rejecting');
     }
     next();
 };

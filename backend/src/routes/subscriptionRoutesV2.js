@@ -8,6 +8,6 @@ const router = express.Router();
 
 router.post('/apply', protectRoute, authorizeRoles('student', 'faculty'), subscriptionUpload, handleUploadError, validateSubscriptionApply, apply);
 router.get('/my', protectRoute, getMySubscriptions);
-router.post('/verify-entry', protectRoute, authorizeRoles('caretaker', 'admin'), verifyEntry);
+router.post('/verify-entry', protectRoute, authorizeRoles('caretaker', 'admin', 'gym_admin', 'swim_admin'), verifyEntry);
 
 export default router;

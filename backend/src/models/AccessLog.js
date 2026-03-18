@@ -9,11 +9,11 @@ const accessLogSchema = new mongoose.Schema(
         },
         subscription: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'Subscription'
+            ref: 'SubscriptionV2'
         },
         facilityType: {
             type: String,
-            enum: ['gym', 'swimming'],
+            enum: ['gym', 'swimming', 'Gym', 'SwimmingPool'],
             required: true
         },
         action: {

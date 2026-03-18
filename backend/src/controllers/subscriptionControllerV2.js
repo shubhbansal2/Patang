@@ -1,6 +1,14 @@
 import SubscriptionV2 from '../models/SubscriptionV2.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
 import { generatePassId, calculateEndDate, generateQRCode } from '../services/subscriptionService.js';
+import {
+    createAccessLog,
+    getFacilityOccupancySummary,
+    getLatestAccessAction,
+    getScopedSubscriptionTypes,
+    normalizeSubscriptionType,
+    parseSubscriptionScanPayload
+} from '../services/accessService.js';
 
 /**
  * POST /api/v2/subscriptions/apply
@@ -69,22 +77,29 @@ export const listForAdmin = async (req, res) => {
         const { status = 'Pending', facilityType, page = 1, limit = 20 } = req.query;
         const pageNum = parseInt(page);
         const limitNum = parseInt(limit);
+        const scopedTypes = getScopedSubscriptionTypes(req.user.roles, facilityType);
+
+        if (!scopedTypes.length) {
+            return errorResponse(res, 403, 'FORBIDDEN', 'You are not allowed to view subscriptions for this facility');
+        }
 
         const query = {};
         if (status) query.status = status;
-        if (facilityType) query.facilityType = facilityType;
+        query.facilityType = scopedTypes.length === 1 ? scopedTypes[0] : { $in: scopedTypes };
 
-        const [subscriptions, total] = await Promise.all([
+        const [subscriptions, total, occupancy] = await Promise.all([
             SubscriptionV2.find(query)
                 .populate('userId', 'name email')
                 .sort({ createdAt: 1 })
                 .skip((pageNum - 1) * limitNum)
                 .limit(limitNum),
-            SubscriptionV2.countDocuments(query)
+            SubscriptionV2.countDocuments(query),
+            Promise.all(scopedTypes.map((type) => getFacilityOccupancySummary(type)))
         ]);
 
         return successResponse(res, 200, {
             subscriptions,
+            occupancy,
             pagination: {
                 page: pageNum,
                 limit: limitNum,
@@ -104,11 +119,16 @@ export const listForAdmin = async (req, res) => {
 export const adminReview = async (req, res) => {
     try {
         const { subscriptionId } = req.params;
-        const { action, rejectionReason } = req.body;
+        const { action, rejectionReason, comments } = req.body;
 
         const subscription = await SubscriptionV2.findById(subscriptionId);
         if (!subscription) {
             return errorResponse(res, 404, 'NOT_FOUND', 'Subscription not found');
+        }
+
+        const scopedTypes = getScopedSubscriptionTypes(req.user.roles, subscription.facilityType);
+        if (!scopedTypes.length) {
+            return errorResponse(res, 403, 'FORBIDDEN', 'You are not allowed to review this subscription');
         }
 
         if (subscription.status !== 'Pending') {
@@ -128,26 +148,32 @@ export const adminReview = async (req, res) => {
             subscription.qrCode = qrCode;
             subscription.reviewedBy = req.user._id;
             subscription.reviewedAt = new Date();
+            subscription.reviewComments = comments || null;
             await subscription.save();
 
             return successResponse(res, 200, {
                 status: 'Approved',
                 startDate: subscription.startDate,
                 endDate: subscription.endDate,
-                passId: subscription.passId
+                passId: subscription.passId,
+                comments: subscription.reviewComments
             }, 'Subscription approved');
         } else if (action === 'reject') {
             subscription.status = 'Rejected';
-            subscription.rejectionReason = rejectionReason;
+            subscription.rejectionReason = rejectionReason || comments;
             subscription.reviewedBy = req.user._id;
             subscription.reviewedAt = new Date();
+            subscription.reviewComments = comments || rejectionReason || null;
             await subscription.save();
 
             return successResponse(res, 200, {
                 status: 'Rejected',
-                rejectionReason
+                rejectionReason: subscription.rejectionReason,
+                comments: subscription.reviewComments
             }, 'Subscription rejected');
         }
+
+        return errorResponse(res, 400, 'VALIDATION_ERROR', 'action must be approve or reject');
     } catch (error) {
         return errorResponse(res, 500, 'SERVER_ERROR', error.message);
     }
@@ -159,31 +185,83 @@ export const adminReview = async (req, res) => {
  */
 export const verifyEntry = async (req, res) => {
     try {
-        const { passId } = req.body;
-        if (!passId) {
-            return errorResponse(res, 400, 'VALIDATION_ERROR', 'passId is required');
+        const payload = parseSubscriptionScanPayload(req.body);
+        if (!payload?.passId) {
+            return errorResponse(res, 400, 'VALIDATION_ERROR', 'passId or qrPayload is required');
         }
 
-        const subscription = await SubscriptionV2.findOne({ passId })
+        const subscription = await SubscriptionV2.findOne({ passId: payload.passId })
             .populate('userId', 'name email');
 
         if (!subscription) {
             return errorResponse(res, 404, 'PASS_NOT_FOUND', 'Invalid pass ID');
         }
 
+        const scopedTypes = getScopedSubscriptionTypes(req.user.roles, subscription.facilityType);
+        if (!scopedTypes.length) {
+            return errorResponse(res, 403, 'FORBIDDEN', 'You are not allowed to verify this facility access');
+        }
+
         if (subscription.status !== 'Approved') {
             return errorResponse(res, 400, 'SUBSCRIPTION_NOT_ACTIVE', 'Subscription is not active');
+        }
+
+        if (subscription.startDate && new Date() < subscription.startDate) {
+            return errorResponse(res, 400, 'SUBSCRIPTION_NOT_ACTIVE', 'Subscription has not started yet');
         }
 
         if (subscription.endDate && new Date() > subscription.endDate) {
             return errorResponse(res, 400, 'SUBSCRIPTION_EXPIRED', 'Subscription has expired');
         }
 
+        const requestedAction = req.body.action;
+        let action = requestedAction;
+
+        if (action && !['entry', 'exit'].includes(action)) {
+            return errorResponse(res, 400, 'VALIDATION_ERROR', 'action must be entry or exit');
+        }
+
+        if (!action) {
+            const lastAccess = await getLatestAccessAction(subscription.userId._id, subscription.facilityType);
+            action = lastAccess?.action === 'entry' ? 'exit' : 'entry';
+        }
+
+        const accessLog = await createAccessLog({
+            userId: subscription.userId._id,
+            subscriptionId: subscription._id,
+            facilityType: normalizeSubscriptionType(subscription.facilityType),
+            action,
+            scannedBy: req.user._id
+        });
+
+        const occupancy = await getFacilityOccupancySummary(subscription.facilityType);
+
         return successResponse(res, 200, {
             userName: subscription.userId?.name,
+            userEmail: subscription.userId?.email,
             facilityType: subscription.facilityType,
-            validUntil: subscription.endDate
-        }, 'Entry verified');
+            validUntil: subscription.endDate,
+            action,
+            scannedAt: accessLog.scannedAt,
+            occupancy
+        }, `${action === 'entry' ? 'Entry' : 'Exit'} verified`);
+    } catch (error) {
+        return errorResponse(res, 500, 'SERVER_ERROR', error.message);
+    }
+};
+
+export const getOccupancySummary = async (req, res) => {
+    try {
+        const { facilityType } = req.query;
+        const scopedTypes = getScopedSubscriptionTypes(req.user.roles, facilityType);
+
+        if (!scopedTypes.length) {
+            return errorResponse(res, 403, 'FORBIDDEN', 'You are not allowed to view occupancy for this facility');
+        }
+
+        const occupancy = await Promise.all(scopedTypes.map((type) => getFacilityOccupancySummary(type)));
+
+        return successResponse(res, 200, { occupancy });
     } catch (error) {
         return errorResponse(res, 500, 'SERVER_ERROR', error.message);
     }

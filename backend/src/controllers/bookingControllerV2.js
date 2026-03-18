@@ -1,11 +1,89 @@
 import Booking from '../models/Booking.js';
 import TimeSlot from '../models/TimeSlot.js';
 import Facility from '../models/Facility.js';
+import User from '../models/User.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
 import { isWithinNextDays, hoursUntil } from '../utils/dateUtils.js';
 import { checkUserSuspension, checkFairUseQuota, updateSlotStatus } from '../services/bookingService.js';
 import { createPenalty } from '../services/penaltyService.js';
 import { decodeBookingQR, generateBookingQR } from '../services/qrService.js';
+import mongoose from 'mongoose';
+
+const ACTIVE_BOOKING_STATUSES = ['Confirmed', 'Provisioned', 'Attended'];
+const CANCELLABLE_BOOKING_STATUSES = ['Confirmed', 'Provisioned'];
+
+const getDateRange = (dateInput) => {
+    const date = new Date(dateInput);
+    if (Number.isNaN(date.getTime())) {
+        return null;
+    }
+
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    return { start, end };
+};
+
+const findUserByIdentifier = async (identifier) => {
+    if (!identifier) {
+        return null;
+    }
+
+    const orConditions = [
+        { email: identifier },
+        { 'profileDetails.rollNumber': identifier }
+    ];
+
+    if (mongoose.Types.ObjectId.isValid(identifier)) {
+        orConditions.unshift({ _id: identifier });
+    }
+
+    return User.findOne({ $or: orConditions }).select('name email profileDetails');
+};
+
+const releaseSlotForBooking = async (booking) => {
+    const slotId = booking.slotId?._id || booking.slotId;
+    if (slotId) {
+        await TimeSlot.findByIdAndUpdate(slotId, { status: 'Available' });
+    }
+};
+
+const markBookingAttendance = async ({ booking, attendanceStatus, markedBy, note = null }) => {
+    if (attendanceStatus === 'present') {
+        booking.status = 'Attended';
+        booking.checkedInAt = new Date();
+        booking.checkedInBy = markedBy;
+        booking.cancellationReason = note || booking.cancellationReason;
+        await booking.save();
+
+        return {
+            status: booking.status,
+            penaltyApplied: false
+        };
+    }
+
+    booking.status = 'NoShow';
+    booking.checkedInBy = markedBy;
+    booking.cancellationReason = note || booking.cancellationReason;
+    await booking.save();
+
+    await createPenalty(
+        booking.userId,
+        'NoShow',
+        booking._id,
+        note || 'Marked absent by caretaker/admin'
+    );
+
+    await releaseSlotForBooking(booking);
+
+    return {
+        status: booking.status,
+        penaltyApplied: true
+    };
+};
 
 /**
  * POST /api/v2/bookings
@@ -182,7 +260,11 @@ export const cancelBooking = async (req, res) => {
             return errorResponse(res, 403, 'NOT_OWNER', 'You can only cancel your own bookings');
         }
 
-        if (!['Confirmed', 'Provisioned'].includes(booking.status)) {
+        if (!req.body?.reason?.trim()) {
+            return errorResponse(res, 400, 'VALIDATION_ERROR', 'A cancellation reason is required');
+        }
+
+        if (!CANCELLABLE_BOOKING_STATUSES.includes(booking.status)) {
             return errorResponse(res, 400, 'CANNOT_CANCEL', 'This booking cannot be cancelled');
         }
 
@@ -201,11 +283,11 @@ export const cancelBooking = async (req, res) => {
         }
 
         booking.cancelledAt = new Date();
-        booking.cancellationReason = req.body?.reason || 'User cancelled';
+        booking.cancellationReason = req.body.reason.trim();
         await booking.save();
 
         // Release the slot
-        await TimeSlot.findByIdAndUpdate(booking.slotId._id, { status: 'Available' });
+        await releaseSlotForBooking(booking);
 
         return successResponse(res, 200, {
             status: booking.status,
@@ -244,6 +326,10 @@ export const checkIn = async (req, res) => {
             return errorResponse(res, 404, 'BOOKING_NOT_FOUND', 'Booking not found');
         }
 
+        if (String(decoded.userId) !== String(booking.userId)) {
+            return errorResponse(res, 400, 'INVALID_QR', 'QR token does not belong to this booking owner');
+        }
+
         if (booking.status === 'Attended') {
             return errorResponse(res, 400, 'ALREADY_CHECKED_IN', 'User has already checked in');
         }
@@ -252,11 +338,14 @@ export const checkIn = async (req, res) => {
             return errorResponse(res, 400, 'INVALID_QR', 'Booking is not in a confirmed state');
         }
 
-        // Check 15-minute window from slot start
+        // Check check-in window from slot start to 15 minutes after.
         const slotStart = booking.slotId?.startTime;
         if (slotStart) {
             const now = new Date();
             const windowEnd = new Date(slotStart.getTime() + 15 * 60 * 1000);
+            if (now < slotStart) {
+                return errorResponse(res, 400, 'CHECK_IN_WINDOW_NOT_OPEN', 'Check-in opens at the slot start time');
+            }
             if (now > windowEnd) {
                 return errorResponse(res, 400, 'CHECK_IN_WINDOW_CLOSED', 'Check-in window has closed (more than 15 minutes past slot start)');
             }
@@ -272,6 +361,203 @@ export const checkIn = async (req, res) => {
             status: 'Attended',
             checkedInAt: booking.checkedInAt
         }, 'Check-in successful');
+    } catch (error) {
+        return errorResponse(res, 500, 'SERVER_ERROR', error.message);
+    }
+};
+
+/**
+ * GET /api/v2/bookings/caretaker
+ * List bookings for caretaker/admin review.
+ */
+export const listBookingsForCaretaker = async (req, res) => {
+    try {
+        const { facilityId, status, date } = req.query;
+        const query = {};
+
+        if (facilityId) {
+            query.facilityId = facilityId;
+        }
+
+        if (status) {
+            query.status = status;
+        }
+
+        if (date) {
+            const range = getDateRange(date);
+            if (!range) {
+                return errorResponse(res, 400, 'VALIDATION_ERROR', 'date must be a valid ISO date');
+            }
+
+            query.slotDate = {
+                $gte: range.start,
+                $lte: range.end
+            };
+        }
+
+        const bookings = await Booking.find(query)
+            .populate('userId', 'name email profileDetails.rollNumber')
+            .populate('facilityId', 'name facilityType sportType location')
+            .populate('slotId', 'date startTime endTime status')
+            .sort({ slotDate: 1, createdAt: 1 });
+
+        return successResponse(res, 200, { bookings });
+    } catch (error) {
+        return errorResponse(res, 500, 'SERVER_ERROR', error.message);
+    }
+};
+
+/**
+ * POST /api/v2/bookings/verify-attendee
+ * Cross-reference a student identifier against a valid booking.
+ */
+export const verifyAttendeeByIdentifier = async (req, res) => {
+    try {
+        const { identifier, bookingId, slotId, facilityId } = req.body;
+
+        if (!identifier) {
+            return errorResponse(res, 400, 'VALIDATION_ERROR', 'identifier is required');
+        }
+
+        if (!bookingId && !slotId && !facilityId) {
+            return errorResponse(res, 400, 'VALIDATION_ERROR', 'bookingId, slotId, or facilityId is required');
+        }
+
+        const user = await findUserByIdentifier(identifier);
+        if (!user) {
+            return successResponse(res, 200, {
+                valid: false,
+                reason: 'No user found for the provided identifier'
+            });
+        }
+
+        const query = {
+            status: { $in: ACTIVE_BOOKING_STATUSES },
+            $or: [
+                { userId: user._id },
+                { joinedUsers: user._id }
+            ]
+        };
+
+        if (bookingId) {
+            query._id = bookingId;
+        }
+
+        if (slotId) {
+            query.slotId = slotId;
+        }
+
+        if (facilityId) {
+            query.facilityId = facilityId;
+        }
+
+        const booking = await Booking.findOne(query)
+            .populate('facilityId', 'name facilityType sportType')
+            .populate('slotId', 'date startTime endTime')
+            .populate('userId', 'name email profileDetails.rollNumber');
+
+        if (!booking) {
+            return successResponse(res, 200, {
+                valid: false,
+                user: {
+                    _id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    rollNumber: user.profileDetails?.rollNumber || null
+                },
+                reason: 'No valid active booking matched the provided identifier'
+            });
+        }
+
+        return successResponse(res, 200, {
+            valid: true,
+            booking: {
+                _id: booking._id,
+                status: booking.status,
+                slotDate: booking.slotDate,
+                isGroupBooking: booking.isGroupBooking,
+                facility: booking.facilityId,
+                slot: booking.slotId,
+                bookedBy: booking.userId
+            }
+        }, 'Valid booking found');
+    } catch (error) {
+        return errorResponse(res, 500, 'SERVER_ERROR', error.message);
+    }
+};
+
+/**
+ * PATCH /api/v2/bookings/:bookingId/attendance
+ * Caretaker/admin manually marks attendance.
+ */
+export const updateAttendanceStatus = async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+        const { attendanceStatus, note } = req.body;
+
+        if (!['present', 'absent'].includes(attendanceStatus)) {
+            return errorResponse(res, 400, 'VALIDATION_ERROR', 'attendanceStatus must be present or absent');
+        }
+
+        const booking = await Booking.findById(bookingId).populate('slotId');
+        if (!booking) {
+            return errorResponse(res, 404, 'BOOKING_NOT_FOUND', 'Booking not found');
+        }
+
+        if (!['Confirmed', 'Provisioned'].includes(booking.status)) {
+            return errorResponse(res, 400, 'INVALID_STATUS', 'Attendance can only be updated for confirmed or provisioned bookings');
+        }
+
+        const result = await markBookingAttendance({
+            booking,
+            attendanceStatus,
+            markedBy: req.user._id,
+            note
+        });
+
+        return successResponse(res, 200, {
+            bookingId: booking._id,
+            status: result.status,
+            penaltyApplied: result.penaltyApplied
+        }, `Booking marked ${attendanceStatus}`);
+    } catch (error) {
+        return errorResponse(res, 500, 'SERVER_ERROR', error.message);
+    }
+};
+
+/**
+ * PATCH /api/v2/bookings/:bookingId/release
+ * Caretaker/admin releases a slot after a cancellation or facility-side override.
+ */
+export const releaseBookingSlot = async (req, res) => {
+    try {
+        const { bookingId } = req.params;
+        const { reason } = req.body;
+
+        if (!reason?.trim()) {
+            return errorResponse(res, 400, 'VALIDATION_ERROR', 'A release reason is required');
+        }
+
+        const booking = await Booking.findById(bookingId).populate('slotId');
+        if (!booking) {
+            return errorResponse(res, 404, 'BOOKING_NOT_FOUND', 'Booking not found');
+        }
+
+        if (!CANCELLABLE_BOOKING_STATUSES.includes(booking.status)) {
+            return errorResponse(res, 400, 'INVALID_STATUS', 'Only active bookings can be released');
+        }
+
+        booking.status = 'Cancelled';
+        booking.cancelledAt = new Date();
+        booking.cancellationReason = reason.trim();
+        await booking.save();
+
+        await releaseSlotForBooking(booking);
+
+        return successResponse(res, 200, {
+            bookingId: booking._id,
+            status: booking.status
+        }, 'Slot released successfully');
     } catch (error) {
         return errorResponse(res, 500, 'SERVER_ERROR', error.message);
     }
