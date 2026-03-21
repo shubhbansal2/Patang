@@ -17,7 +17,7 @@ const userSchema = new mongoose.Schema({
     },
     roles: [{
         type: String,
-        enum: ['student', 'faculty', 'caretaker', 'coach', 'executive', 'admin', 'guard', 'gym_admin', 'swim_admin'],
+        enum: ['student', 'faculty', 'caretaker', 'coach', 'executive', 'admin', 'coordinator', 'gym_admin', 'swim_admin'],
         default: 'student'
     }],
     status: {
@@ -59,7 +59,7 @@ const userSchema = new mongoose.Schema({
 userSchema.pre('save', async function () {
     // If the password hasn't been changed, simply return to skip hashing
     if (!this.isModified('password')) {
-        return; 
+        return;
     }
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);

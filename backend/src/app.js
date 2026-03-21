@@ -17,6 +17,13 @@ import subscriptionAdminRoutes from './routes/subscriptionAdminRoutes.js';
 import eventRoutes from './routes/eventRoutes.js';
 import eventAdminRoutes from './routes/eventAdminRoutes.js';
 import penaltyRoutes from './routes/penaltyRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
+import slotBookingRoutes from './routes/slotBookingRoutes.js';
+import historyRoutes from './routes/historyRoutes.js';
+import calendarRoutes from './routes/calendarRoutes.js';
+import settingsRoutes from './routes/settingsRoutes.js';
+import coordinatorRoutes from './routes/coordinatorRoutes.js';
+import feedbackRoutes from './routes/feedbackRoutes.js';
 
 // Cron jobs
 import groupExpiryJob from './jobs/groupExpiryJob.js';
@@ -49,6 +56,13 @@ app.use('/api/v2/admin/subscriptions', subscriptionAdminRoutes);
 app.use('/api/v2/events', eventRoutes);
 app.use('/api/v2/admin/events', eventAdminRoutes);
 app.use('/api/v2/penalties', penaltyRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/slot-booking', slotBookingRoutes);
+app.use('/api/history', historyRoutes);
+app.use('/api/calendar', calendarRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/coordinator', coordinatorRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 // Start cron jobs
 groupExpiryJob.start();
