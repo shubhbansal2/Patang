@@ -158,3 +158,18 @@ export const resetPassword = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const logoutUser = async (req, res) => {
+    try {
+        // Since we use JWTs (stateless), logout is mostly a frontend responsibility (delete token).
+        // But if cookies were used, we clear them here just in case.
+        res.cookie('jwt', '', {
+            httpOnly: true,
+            expires: new Date(0)
+        });
+
+        res.status(200).json({ message: "Logged out successfully" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
