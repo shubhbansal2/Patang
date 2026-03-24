@@ -63,6 +63,7 @@ export const verifyOtp = async (req, res) => {
 
             res.status(200).json({
                 _id: user._id,
+                name: user.name,
                 email: user.email,
                 roles: user.roles,
                 token: generateToken(user._id, user.roles)
@@ -86,6 +87,7 @@ export const loginUser = async (req, res) => {
             }
             res.json({
                 _id: user._id,
+                name: user.name,
                 email: user.email,
                 roles: user.roles,
                 token: generateToken(user._id, user.roles)

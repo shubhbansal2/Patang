@@ -2,13 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Light theme (default) ──────────────────────────────── */
+:root {
+  --bg-primary: #f0f4f8;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafb;
+  --bg-input: #f9fafb;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --border-color: #f1f5f9;
+  --border-card: #f1f5f9;
+  --sidebar-bg: #073d3f;
+}
+
+/* ── Dark theme ─────────────────────────────────────────── */
+.dark {
+  --bg-primary: #0f172a;
+  --bg-card: #1e293b;
+  --bg-card-hover: #334155;
+  --bg-input: #1e293b;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+  --border-color: #334155;
+  --border-card: #334155;
+  --sidebar-bg: #020617;
+}
+
 body {
   font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  background-color: #f0f4f8;
-  color: #1e293b;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
+
+/* Dark mode overrides for common Tailwind classes */
+.dark .bg-white { background-color: var(--bg-card) !important; }
+.dark .bg-surface { background-color: var(--bg-primary) !important; }
+.dark .bg-gray-50 { background-color: var(--bg-card-hover) !important; }
+.dark .border-gray-100 { border-color: var(--border-card) !important; }
+.dark .border-gray-50 { border-color: var(--border-card) !important; }
+.dark .text-gray-800 { color: var(--text-primary) !important; }
+.dark .text-gray-600 { color: var(--text-secondary) !important; }
+.dark .text-gray-500 { color: var(--text-secondary) !important; }
+.dark .text-gray-400 { color: var(--text-muted) !important; }
+.dark .text-gray-300 { color: var(--text-muted) !important; }
+.dark .bg-brand-50 { background-color: rgba(13, 115, 119, 0.15) !important; }
+.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.15) !important; }
+.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.15) !important; }
+.dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.15) !important; }
+.dark .bg-blue-50 { background-color: rgba(59, 130, 246, 0.15) !important; }
+.dark .hover\:bg-gray-50:hover { background-color: var(--bg-card-hover) !important; }
+.dark .hover\:bg-gray-100:hover { background-color: var(--bg-card-hover) !important; }
+
+/* Topbar dark mode */
+.dark header.sticky { background-color: var(--bg-card) !important; border-color: var(--border-card) !important; }
+
+/* Profile dropdown dark mode */
+.dark .shadow-xl { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3), 0 8px 10px -6px rgba(0,0,0,0.3) !important; }
+
+/* Scrollbar dark mode */
+.dark ::-webkit-scrollbar-track { background: var(--bg-primary); }
+.dark ::-webkit-scrollbar-thumb { background: #475569; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #f0f4f8; }

@@ -72,7 +72,6 @@ const subscriptionV2Schema = new mongoose.Schema({
 subscriptionV2Schema.index({ userId: 1, status: 1 });
 subscriptionV2Schema.index({ facilityType: 1, status: 1 });
 subscriptionV2Schema.index({ endDate: 1 });
-subscriptionV2Schema.index({ passId: 1 }, { unique: true, sparse: true });
 
 const SubscriptionV2 = mongoose.model('SubscriptionV2', subscriptionV2Schema);
 
