@@ -18,7 +18,17 @@ import {
   Bell,
   Sun,
   Moon,
-  Users
+  Users,
+  ShieldCheck,
+  Shield,
+  BarChart3,
+  ClipboardList,
+  Building2,
+  Gavel,
+  FileText,
+  BookOpen,
+  Building,
+  CalendarPlus
 } from 'lucide-react';
 
 const navItems = [
@@ -30,15 +40,35 @@ const navItems = [
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
+
+
 const coordinatorItems = [
   { path: '/coordinator/events', label: 'Manage Events', icon: CalendarDays },
   { path: '/coordinator/venues', label: 'Book Venue', icon: LayoutDashboard },
+];
+
+const captainItems = [
+  { path: '/captain/dashboard', label: 'Slot Block', icon: ShieldCheck },
+];
+const executiveItems = [
+  { path: '/executive/dashboard', label: 'Overview', icon: LayoutDashboard },
+  { path: '/executive/calendar', label: 'Calendar Mgmt', icon: CalendarDays },
+  { path: '/executive/coordinators', label: 'Coordinator Access', icon: Users },
+  { path: '/executive/approvals', label: 'Booking Approvals', icon: ClipboardList },
+  { path: '/executive/feedback', label: 'Feedback', icon: MessageSquare },
+  { path: '/executive/analytics', label: 'Analytics', icon: BarChart3 },
+  { path: '/executive/audit-log', label: 'Audit Log', icon: FileText },
+  { path: '/executive/users', label: 'User Management', icon: User },
+  { path: '/executive/facilities', label: 'Facilities', icon: Building2 },
+  { path: '/executive/penalties', label: 'Penalties', icon: Gavel },
 ];
 
 const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const isCoordinator = user?.roles?.some(r => ['coordinator', 'executive', 'admin'].includes(r));
+  const isCaptain = user?.roles?.some(r => r === 'captain');
+  const isExecutive = user?.roles?.some(r => ['executive', 'admin'].includes(r));
 
   const handleLogout = () => {
     logout();
@@ -106,6 +136,11 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
             </NavLink>
           ))}
 
+
+
+
+
+
           {isCoordinator && (
             <>
               <div className="my-6 border-t border-white/10" />
@@ -115,6 +150,64 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
                 </p>
               )}
               {coordinatorItems.map(({ path, label, icon: Icon }) => (
+                <NavLink
+                  key={path}
+                  to={path}
+                  onClick={onClose}
+                  title={collapsed ? label : undefined}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 ${collapsed ? 'justify-center px-2' : 'px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-200
+                    ${isActive
+                      ? 'bg-white/10 text-white shadow-sm'
+                      : 'text-brand-100 hover:bg-white/5 hover:text-white'
+                    }`
+                  }
+                >
+                  <Icon size={18} className="text-brand-200 flex-shrink-0" />
+                  {!collapsed && label}
+                </NavLink>
+              ))}
+            </>
+          )}
+
+          {isCaptain && (
+            <>
+              <div className="my-6 border-t border-white/10" />
+              {!collapsed && (
+                <p className="px-4 text-xs font-semibold text-brand-300 uppercase tracking-wider mb-3">
+                  Captain
+                </p>
+              )}
+              {captainItems.map(({ path, label, icon: Icon }) => (
+                <NavLink
+                  key={path}
+                  to={path}
+                  onClick={onClose}
+                  title={collapsed ? label : undefined}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 ${collapsed ? 'justify-center px-2' : 'px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-200
+                    ${isActive
+                      ? 'bg-white/10 text-white shadow-sm'
+                      : 'text-brand-100 hover:bg-white/5 hover:text-white'
+                    }`
+                  }
+                >
+                  <Icon size={18} className="text-brand-200 flex-shrink-0" />
+                  {!collapsed && label}
+                </NavLink>
+              ))}
+            </>
+          )}
+
+          {isExecutive && (
+            <>
+              <div className="my-6 border-t border-white/10" />
+              {!collapsed && (
+                <p className="px-4 text-xs font-semibold text-brand-300 uppercase tracking-wider mb-3">
+                  Executive
+                </p>
+              )}
+              {executiveItems.map(({ path, label, icon: Icon }) => (
                 <NavLink
                   key={path}
                   to={path}
@@ -208,7 +301,9 @@ const Topbar = ({ onMenuToggle }) => {
     if (path === '/settings') return 'Settings';
     if (path === '/calendar') return 'Calendar';
     if (path === '/feedback') return 'Feedback';
+
     if (path.startsWith('/coordinator')) return 'Coordinators';
+    if (path.startsWith('/executive')) return 'Executive Portal';
     return 'Dashboard';
   })();
 
@@ -217,7 +312,7 @@ const Topbar = ({ onMenuToggle }) => {
   return (
     <header className="sticky top-0 z-30 h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-8">
       <div className="flex items-center gap-4">
-         <button
+        <button
           onClick={onMenuToggle}
           className="lg:hidden p-2 -ml-2 rounded-lg text-gray-500 hover:bg-gray-100 mr-2"
         >
@@ -276,15 +371,17 @@ const Topbar = ({ onMenuToggle }) => {
             className="flex items-center gap-3 py-1 px-2 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <div className="hidden md:block text-right">
-               <p className="text-sm font-semibold text-gray-800 leading-tight">
-                  {displayName}
-               </p>
-               <p className="text-xs text-gray-500">
-                 Student
-               </p>
+              <p className="text-sm font-semibold text-gray-800 leading-tight">
+                {displayName}
+              </p>
+              <p className="text-xs text-gray-500">
+                {user?.roles && user.roles.length > 0 
+                  ? user.roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(', ') 
+                  : 'Student'}
+              </p>
             </div>
             <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm">
-                <User size={20} className="text-brand-600" />
+              <User size={20} className="text-brand-600" />
             </div>
             <ChevronDown size={14} className="text-gray-400" />
           </button>

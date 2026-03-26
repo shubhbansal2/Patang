@@ -7,6 +7,7 @@ import loginBG from '../../assets/loginBG.jpg';
 const RegisterPage = () => {
   const [step, setStep] = useState('register'); // 'register' | 'otp'
   const [name, setName] = useState('');
+  const [rollNumber, setRollNumber] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -29,7 +30,7 @@ const RegisterPage = () => {
       setError('Passwords do not match');
       return;
     }
-    const result = await register(name.trim(), email.trim(), p, cp);
+    const result = await register(name.trim(), email.trim(), rollNumber.trim(), p, cp);
     if (result.success) {
       setMessage('OTP sent to your email!');
       setStep('otp');
@@ -53,7 +54,7 @@ const RegisterPage = () => {
     setError('');
     const p = password.trim();
     const cp = confirmPassword.trim();
-    const result = await register(name.trim(), email.trim(), p, cp);
+    const result = await register(name.trim(), email.trim(), rollNumber.trim(), p, cp);
     if (result.success) {
       setMessage('OTP re-sent to your email!');
     } else {
@@ -93,7 +94,16 @@ const RegisterPage = () => {
                 <div className="relative">
                   <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input id="register-name" name="name" type="text" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)}
-                    placeholder="Aryan Kumar" required
+                    placeholder="Your Name" required
+                    className="w-full pl-10 pr-4 py-3 bg-white rounded-lg border border-gray-300 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all" />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="register-roll" className="block text-sm font-medium text-gray-600 mb-1.5">Roll Number</label>
+                <div className="relative">
+                  <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input id="register-roll" name="rollNumber" type="text" value={rollNumber} onChange={(e) => setRollNumber(e.target.value)}
+                    placeholder="Roll No." required
                     className="w-full pl-10 pr-4 py-3 bg-white rounded-lg border border-gray-300 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all" />
                 </div>
               </div>
@@ -168,7 +178,7 @@ const RegisterPage = () => {
                   <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input id="register-otp" name="otp" type="text" autoComplete="one-time-code" value={otp} onChange={(e) => setOtp(e.target.value)}
                     placeholder="123456" maxLength={6} required
-                    className="w-full px-4 py-3 bg-white rounded-lg border border-gray-300 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all tracking-widest text-lg" />
+                    className="w-full pl-10 pr-4 py-3 bg-white rounded-lg border border-gray-300 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all tracking-widest text-lg" />
                 </div>
               </div>
 
