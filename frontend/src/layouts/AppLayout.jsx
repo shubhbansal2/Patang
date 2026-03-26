@@ -88,7 +88,7 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
       <aside
         className={`
           fixed top-0 left-0 z-50 h-full bg-sidebar
-          flex flex-col transition-all duration-300 ease-in-out
+          flex flex-col overflow-y-auto transition-all duration-300 ease-in-out
           lg:translate-x-0 lg:static lg:z-auto
           ${collapsed ? 'w-20' : 'w-64'}
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -116,7 +116,7 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+        <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map(({ path, label, icon: Icon }) => (
             <NavLink
               key={path}
