@@ -25,7 +25,9 @@ import {
   Building2,
   Gavel,
   FileText,
-  BookOpen
+  BookOpen,
+  Building,
+  CalendarPlus
 } from 'lucide-react';
 
 const navItems = [
@@ -36,6 +38,8 @@ const navItems = [
   { path: '/feedback', label: 'Feedback', icon: MessageSquare },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
+
+
 
 const coordinatorItems = [
   { path: '/coordinator/events', label: 'Manage Events', icon: CalendarDays },
@@ -126,6 +130,8 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
               {!collapsed && label}
             </NavLink>
           ))}
+
+
 
 
 
@@ -261,6 +267,7 @@ const Topbar = ({ onMenuToggle }) => {
     if (path === '/settings') return 'Settings';
     if (path === '/calendar') return 'Calendar';
     if (path === '/feedback') return 'Feedback';
+
     if (path.startsWith('/coordinator')) return 'Coordinators';
     if (path.startsWith('/executive')) return 'Executive Portal';
     return 'Dashboard';
