@@ -178,7 +178,7 @@ const RegisterPage = () => {
                   <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input id="register-otp" name="otp" type="text" autoComplete="one-time-code" value={otp} onChange={(e) => setOtp(e.target.value)}
                     placeholder="123456" maxLength={6} required
-                    className="w-full px-4 py-3 bg-white rounded-lg border border-gray-300 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all tracking-widest text-lg" />
+                    className="w-full pl-10 pr-4 py-3 bg-white rounded-lg border border-gray-300 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all tracking-widest text-lg" />
                 </div>
               </div>
 
