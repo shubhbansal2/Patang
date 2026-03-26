@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     try {
       const { data } = await api.post('/auth/login', { email, password });
-      const userData = { _id: data._id, name: data.name, email: data.email, roles: data.roles };
+      const userData = { _id: data._id, name: data.name, email: data.email, roles: data.roles, captainOf: data.captainOf };
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(userData));
       setToken(data.token);
@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }) => {
     setLoading(true);
     try {
       const { data } = await api.post('/auth/verify-otp', { email, otp });
-      const userData = { _id: data._id, name: data.name, email: data.email, roles: data.roles };
+      const userData = { _id: data._id, name: data.name, email: data.email, roles: data.roles, captainOf: data.captainOf };
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(userData));
       setToken(data.token);

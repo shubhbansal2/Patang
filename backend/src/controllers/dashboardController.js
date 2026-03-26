@@ -170,6 +170,7 @@ export const getDashboard = async (req, res) => {
             name: req.user.name,
             email: req.user.email,
             roles: req.user.roles,
+            captainOf: req.user.captainOf,
             profileDetails: req.user.profileDetails ?? {}
         };
 

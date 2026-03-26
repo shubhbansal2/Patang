@@ -18,7 +18,8 @@ import {
   Bell,
   Sun,
   Moon,
-  Users
+  Users,
+  ShieldCheck
 } from 'lucide-react';
 
 const navItems = [
@@ -35,10 +36,15 @@ const coordinatorItems = [
   { path: '/coordinator/venues', label: 'Book Venue', icon: LayoutDashboard },
 ];
 
+const captainItems = [
+  { path: '/captain/dashboard', label: 'Slot Block', icon: ShieldCheck },
+];
+
 const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const isCoordinator = user?.roles?.some(r => ['coordinator', 'executive', 'admin'].includes(r));
+  const isCaptain = user?.roles?.some(r => r === 'captain');
 
   const handleLogout = () => {
     logout();
@@ -115,6 +121,35 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
                 </p>
               )}
               {coordinatorItems.map(({ path, label, icon: Icon }) => (
+                <NavLink
+                  key={path}
+                  to={path}
+                  onClick={onClose}
+                  title={collapsed ? label : undefined}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 ${collapsed ? 'justify-center px-2' : 'px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-200
+                    ${isActive
+                      ? 'bg-white/10 text-white shadow-sm'
+                      : 'text-brand-100 hover:bg-white/5 hover:text-white'
+                    }`
+                  }
+                >
+                  <Icon size={18} className="text-brand-200 flex-shrink-0" />
+                  {!collapsed && label}
+                </NavLink>
+              ))}
+            </>
+          )}
+
+          {isCaptain && (
+            <>
+              <div className="my-6 border-t border-white/10" />
+              {!collapsed && (
+                <p className="px-4 text-xs font-semibold text-brand-300 uppercase tracking-wider mb-3">
+                  Captain
+                </p>
+              )}
+              {captainItems.map(({ path, label, icon: Icon }) => (
                 <NavLink
                   key={path}
                   to={path}
@@ -279,8 +314,10 @@ const Topbar = ({ onMenuToggle }) => {
                <p className="text-sm font-semibold text-gray-800 leading-tight">
                   {displayName}
                </p>
-               <p className="text-xs text-gray-500">
-                 {user?.roles ? user.roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(', ') : 'Student'}
+               <p className="text-xs text-gray-400 font-medium">
+                 {user?.roles && user.roles.length > 0 
+                   ? user.roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(', ') 
+                   : 'Student'}
                </p>
             </div>
             <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm">

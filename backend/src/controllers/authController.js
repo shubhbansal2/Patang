@@ -66,6 +66,7 @@ export const verifyOtp = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 roles: user.roles,
+                captainOf: user.captainOf,
                 token: generateToken(user._id, user.roles)
             });
         } else {
@@ -90,6 +91,7 @@ export const loginUser = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 roles: user.roles,
+                captainOf: user.captainOf,
                 token: generateToken(user._id, user.roles)
             });
         } else {

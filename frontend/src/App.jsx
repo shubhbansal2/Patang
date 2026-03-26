@@ -11,6 +11,7 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 
 // User portal pages
 import DashboardPage from './pages/DashboardPage';
+import CaptainDashboardPage from './pages/captain/CaptainDashboardPage';
 import SlotBookingPage from './pages/SlotBookingPage';
 import HistoryPage from './pages/HistoryPage';
 import CalendarPage from './pages/CalendarPage';
@@ -30,6 +31,14 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
+          {/* Captain Routes */}
+          <Route element={<ProtectedRoute allowedRoles={['captain', 'admin', 'executive']} />}>
+            <Route
+              path="/captain/dashboard"
+              element={<AppLayout><CaptainDashboardPage /></AppLayout>}
+            />
+          </Route>
 
           {/* Protected Routes — any authenticated user */}
           <Route element={<ProtectedRoute />}>
