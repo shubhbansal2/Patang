@@ -59,7 +59,7 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const isCoordinator = user?.roles?.some(r => ['coordinator', 'executive', 'admin'].includes(r));
-  const isExecutive = user?.roles?.some(r => ['executive', 'admin'].includes(r));
+  const isExecutive = user?.roles?.some(r => ['executive', 'admin', 'gym_admin', 'swim_admin'].includes(r));
 
   const handleLogout = () => {
     logout();
@@ -331,7 +331,7 @@ const Topbar = ({ onMenuToggle }) => {
                 {displayName}
               </p>
               <p className="text-xs text-gray-500">
-                {user?.roles?.includes('admin') ? 'Admin' : user?.roles?.includes('executive') ? 'Executive' : user?.roles?.includes('coordinator') ? 'Coordinator' : 'Student'}
+                {user?.roles?.includes('admin') ? 'Admin' : user?.roles?.includes('executive') ? 'Executive' : user?.roles?.includes('gym_admin') ? 'Gym Admin' : user?.roles?.includes('swim_admin') ? 'Swim Admin' : user?.roles?.includes('coordinator') ? 'Coordinator' : 'Student'}
               </p>
             </div>
             <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm">

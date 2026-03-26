@@ -84,8 +84,8 @@ function App() {
             />
           </Route>
 
-          {/* Executive Routes — executive, admin only */}
-          <Route element={<ProtectedRoute allowedRoles={['executive', 'admin']} />}>
+          {/* Executive Routes — executive, admin, gym_admin, swim_admin */}
+          <Route element={<ProtectedRoute allowedRoles={['executive', 'admin', 'gym_admin', 'swim_admin']} />}>
             <Route
               path="/executive/dashboard"
               element={<AppLayout><ExecutiveDashboardPage /></AppLayout>}
