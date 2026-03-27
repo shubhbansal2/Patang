@@ -25,10 +25,14 @@ import {
   Building2,
   Gavel,
   FileText,
-  BookOpen
+  ScanLine
 } from 'lucide-react';
 
-const navItems = [
+/* ──────────────────────────────────────────────────────────────────────
+   Navigation item definitions (per-role)
+   ────────────────────────────────────────────────────────────────────── */
+
+const studentItems = [
   { path: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { path: '/slot-booking', label: 'Slot Booking', icon: Dumbbell },
   { path: '/history', label: 'My History', icon: Clock },
@@ -55,11 +59,67 @@ const executiveItems = [
   { path: '/executive/penalties', label: 'Penalties', icon: Gavel },
 ];
 
+const gymAdminItems = [
+  { path: '/gym-admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/gym-admin/requests', label: 'Subscription Requests', icon: ClipboardList },
+  { path: '/gym-admin/scanner', label: 'QR Scanner', icon: ScanLine },
+  { path: '/feedback', label: 'Feedback', icon: MessageSquare },
+  { path: '/settings', label: 'Settings', icon: Settings },
+];
+
+const swimAdminItems = [
+  { path: '/swim-admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/swim-admin/requests', label: 'Subscription Requests', icon: ClipboardList },
+  { path: '/swim-admin/scanner', label: 'QR Scanner', icon: ScanLine },
+  { path: '/feedback', label: 'Feedback', icon: MessageSquare },
+  { path: '/settings', label: 'Settings', icon: Settings },
+];
+
+/* ──────────────────────────────────────────────────────────────────────
+   Sidebar Component
+   ────────────────────────────────────────────────────────────────────── */
+
+const NavItem = ({ path, label, icon: Icon, collapsed, onClose }) => (
+  <NavLink
+    to={path}
+    onClick={onClose}
+    title={collapsed ? label : undefined}
+    className={({ isActive }) =>
+      `flex items-center gap-3 ${collapsed ? 'justify-center px-2' : 'px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-200
+      ${isActive
+        ? 'bg-white/10 text-white shadow-sm'
+        : 'text-brand-100 hover:bg-white/5 hover:text-white'
+      }`
+    }
+  >
+    <Icon size={18} className="text-brand-200 flex-shrink-0" />
+    {!collapsed && label}
+  </NavLink>
+);
+
+const NavSection = ({ title, items, collapsed, onClose }) => (
+  <>
+    <div className="my-6 border-t border-white/10" />
+    {!collapsed && (
+      <p className="px-4 text-xs font-semibold text-brand-300 uppercase tracking-wider mb-3">
+        {title}
+      </p>
+    )}
+    {items.map(item => (
+      <NavItem key={item.path} {...item} collapsed={collapsed} onClose={onClose} />
+    ))}
+  </>
+);
+
 const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
   const isCoordinator = user?.roles?.some(r => ['coordinator', 'executive', 'admin'].includes(r));
-  const isExecutive = user?.roles?.some(r => ['executive', 'admin', 'gym_admin', 'swim_admin'].includes(r));
+  const isExecutive = user?.roles?.some(r => ['executive', 'admin'].includes(r));
+  const isGymAdmin = user?.roles?.some(r => r === 'gym_admin');
+  const isSwimAdmin = user?.roles?.some(r => r === 'swim_admin');
+  const isFacilityAdmin = isGymAdmin || isSwimAdmin;
 
   const handleLogout = () => {
     logout();
@@ -91,7 +151,6 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
 
           {!collapsed && <div className="flex-1" />}
 
-          {/* Hamburger toggle (always visible on desktop, to the right of logo) */}
           <button
             onClick={onToggleCollapse}
             className="hidden lg:flex items-center justify-center w-8 h-8 rounded-lg text-brand-200 hover:bg-white/10 hover:text-white transition-all flex-shrink-0"
@@ -100,7 +159,6 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
             <Menu size={20} />
           </button>
 
-          {/* Mobile close */}
           <button onClick={onClose} className="lg:hidden text-gray-400 hover:text-white ml-auto">
             <X size={20} />
           </button>
@@ -108,79 +166,45 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          {navItems.map(({ path, label, icon: Icon }) => (
-            <NavLink
-              key={path}
-              to={path}
-              onClick={onClose}
-              title={collapsed ? label : undefined}
-              className={({ isActive }) =>
-                `flex items-center gap-3 ${collapsed ? 'justify-center px-2' : 'px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-200
-                ${isActive
-                  ? 'bg-white/10 text-white shadow-sm'
-                  : 'text-brand-100 hover:bg-white/5 hover:text-white'
-                }`
-              }
-            >
-              <Icon size={18} className="text-brand-200 flex-shrink-0" />
-              {!collapsed && label}
-            </NavLink>
+          {/* ── Student nav (hidden for facility admins) ── */}
+          {!isFacilityAdmin && studentItems.map(item => (
+            <NavItem key={item.path} {...item} collapsed={collapsed} onClose={onClose} />
           ))}
 
-          {isCoordinator && (
+          {/* ── Coordinator section ── */}
+          {isCoordinator && !isFacilityAdmin && (
+            <NavSection title="Coordinators" items={coordinatorItems} collapsed={collapsed} onClose={onClose} />
+          )}
+
+          {/* ── Executive section ── */}
+          {isExecutive && !isFacilityAdmin && (
+            <NavSection title="Executive" items={executiveItems} collapsed={collapsed} onClose={onClose} />
+          )}
+
+          {/* ── Gym Admin section ── */}
+          {isGymAdmin && (
             <>
-              <div className="my-6 border-t border-white/10" />
               {!collapsed && (
                 <p className="px-4 text-xs font-semibold text-brand-300 uppercase tracking-wider mb-3">
-                  Coordinators
+                  Gym Administration
                 </p>
               )}
-              {coordinatorItems.map(({ path, label, icon: Icon }) => (
-                <NavLink
-                  key={path}
-                  to={path}
-                  onClick={onClose}
-                  title={collapsed ? label : undefined}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 ${collapsed ? 'justify-center px-2' : 'px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-200
-                    ${isActive
-                      ? 'bg-white/10 text-white shadow-sm'
-                      : 'text-brand-100 hover:bg-white/5 hover:text-white'
-                    }`
-                  }
-                >
-                  <Icon size={18} className="text-brand-200 flex-shrink-0" />
-                  {!collapsed && label}
-                </NavLink>
+              {gymAdminItems.map(item => (
+                <NavItem key={item.path} {...item} collapsed={collapsed} onClose={onClose} />
               ))}
             </>
           )}
 
-          {isExecutive && (
+          {/* ── Swim Admin section ── */}
+          {isSwimAdmin && (
             <>
-              <div className="my-6 border-t border-white/10" />
               {!collapsed && (
                 <p className="px-4 text-xs font-semibold text-brand-300 uppercase tracking-wider mb-3">
-                  Executive
+                  Swim Administration
                 </p>
               )}
-              {executiveItems.map(({ path, label, icon: Icon }) => (
-                <NavLink
-                  key={path}
-                  to={path}
-                  onClick={onClose}
-                  title={collapsed ? label : undefined}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 ${collapsed ? 'justify-center px-2' : 'px-4'} py-3 rounded-xl text-sm font-medium transition-all duration-200
-                    ${isActive
-                      ? 'bg-white/10 text-white shadow-sm'
-                      : 'text-brand-100 hover:bg-white/5 hover:text-white'
-                    }`
-                  }
-                >
-                  <Icon size={18} className="text-brand-200 flex-shrink-0" />
-                  {!collapsed && label}
-                </NavLink>
+              {swimAdminItems.map(item => (
+                <NavItem key={item.path} {...item} collapsed={collapsed} onClose={onClose} />
               ))}
             </>
           )}
@@ -205,6 +229,10 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
   );
 };
 
+/* ──────────────────────────────────────────────────────────────────────
+   Topbar Component
+   ────────────────────────────────────────────────────────────────────── */
+
 const Topbar = ({ onMenuToggle }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -217,6 +245,8 @@ const Topbar = ({ onMenuToggle }) => {
   const [hasUnread, setHasUnread] = useState(false);
   const [dashboardName, setDashboardName] = useState(null);
 
+  const isFacilityAdmin = user?.roles?.some(r => ['gym_admin', 'swim_admin'].includes(r));
+
   // Apply dark mode on mount and toggle
   useEffect(() => {
     if (darkMode) {
@@ -228,26 +258,26 @@ const Topbar = ({ onMenuToggle }) => {
     }
   }, [darkMode]);
 
-  // Check for unread notifications and fetch user name from dashboard data
+  // Fetch dashboard info — only for non-admin roles (student/coordinator/executive)
   useEffect(() => {
+    if (isFacilityAdmin) return; // Skip for gym_admin/swim_admin — endpoint not available
+
     const fetchDashboardInfo = async () => {
       try {
         const { data } = await api.get('/dashboard');
         const d = data.data;
-        // Update display name from the dashboard user profile
         if (d.user?.name) {
           setDashboardName(d.user.name);
         }
-        // Show red dot if user has active penalties or upcoming events
         const hasPenalties = d.penalties?.totalActiveCount > 0;
         const hasNewEvents = d.upcomingEvents?.length > 0;
         setHasUnread(hasPenalties || hasNewEvents);
       } catch {
-        // Silently fail, don't block the UI
+        // Silently fail
       }
     };
     fetchDashboardInfo();
-  }, []);
+  }, [isFacilityAdmin]);
 
   // Derive page name from path
   const pageName = (() => {
@@ -260,10 +290,24 @@ const Topbar = ({ onMenuToggle }) => {
     if (path === '/feedback') return 'Feedback';
     if (path.startsWith('/coordinator')) return 'Coordinators';
     if (path.startsWith('/executive')) return 'Executive Portal';
+    if (path.startsWith('/gym-admin')) return 'Gym Administration';
+    if (path.startsWith('/swim-admin')) return 'Swim Administration';
     return 'Dashboard';
   })();
 
+  // Context-aware header text
+  const headerText = isFacilityAdmin ? 'Operations Console' : 'My Activity';
+
   const displayName = dashboardName || user?.name || user?.email?.split('@')[0]?.split('.')?.map(n => n.charAt(0).toUpperCase() + n.slice(1)).join(' ') || 'User';
+
+  const roleBadge = (() => {
+    if (user?.roles?.includes('admin')) return 'Admin';
+    if (user?.roles?.includes('executive')) return 'Executive';
+    if (user?.roles?.includes('gym_admin')) return 'Gym Admin';
+    if (user?.roles?.includes('swim_admin')) return 'Swim Admin';
+    if (user?.roles?.includes('coordinator')) return 'Coordinator';
+    return 'Student';
+  })();
 
   return (
     <header className="sticky top-0 z-30 h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6 lg:px-8">
@@ -276,7 +320,7 @@ const Topbar = ({ onMenuToggle }) => {
         </button>
         <div className="hidden sm:block">
           <p className="text-xs text-gray-400">Home / <span className="text-brand-500">{pageName}</span></p>
-          <h2 className="text-lg font-bold text-gray-800">My Activity</h2>
+          <h2 className="text-lg font-bold text-gray-800">{headerText}</h2>
         </div>
       </div>
 
@@ -330,9 +374,7 @@ const Topbar = ({ onMenuToggle }) => {
               <p className="text-sm font-semibold text-gray-800 leading-tight">
                 {displayName}
               </p>
-              <p className="text-xs text-gray-500">
-                {user?.roles?.includes('admin') ? 'Admin' : user?.roles?.includes('executive') ? 'Executive' : user?.roles?.includes('gym_admin') ? 'Gym Admin' : user?.roles?.includes('swim_admin') ? 'Swim Admin' : user?.roles?.includes('coordinator') ? 'Coordinator' : 'Student'}
-              </p>
+              <p className="text-xs text-gray-500">{roleBadge}</p>
             </div>
             <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm">
               <User size={20} className="text-brand-600" />
@@ -363,6 +405,10 @@ const Topbar = ({ onMenuToggle }) => {
     </header>
   );
 };
+
+/* ──────────────────────────────────────────────────────────────────────
+   AppLayout
+   ────────────────────────────────────────────────────────────────────── */
 
 const AppLayout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);

@@ -39,6 +39,22 @@ export const createSportsSlot = async (req, res) => {
     }
 };
 
+export const updateSportsSlot = async (req, res) => {
+    try {
+        const slot = await SportsSlot.findByIdAndUpdate(
+            req.params.slotId,
+            { $set: { capacity: req.body.capacity } },
+            { new: true, runValidators: true }
+        );
+        if (!slot) {
+            return res.status(404).json({ message: 'Slot not found' });
+        }
+        res.json(slot);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+};
+
 export const getFacilitySlots = async (req, res) => {
     try {
         const slots = await SportsSlot.find({

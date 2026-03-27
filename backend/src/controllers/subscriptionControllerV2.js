@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import SubscriptionV2 from '../models/SubscriptionV2.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
 import { generatePassId, calculateEndDate, generateQRCode } from '../services/subscriptionService.js';
@@ -15,8 +16,10 @@ import {
  * Submit a new subscription application (multipart/form-data).
  */
 export const apply = async (req, res) => {
+    const session = await mongoose.startSession();
+    session.startTransaction();
     try {
-        const { facilityType, plan } = req.body;
+        const { facilityType, plan, slotId } = req.body;
         const userId = req.user._id;
 
         // Check for existing active subscription
@@ -24,23 +27,54 @@ export const apply = async (req, res) => {
             userId,
             facilityType,
             status: { $in: ['Pending', 'Approved'] }
-        });
+        }).session(session);
 
         if (existing) {
+            await session.abortTransaction();
+            session.endSession();
             return errorResponse(res, 409, 'ACTIVE_SUBSCRIPTION_EXISTS', 'You already have an active or pending subscription for this facility');
+        }
+
+        // Import SportsSlot (inline to avoid circular dependencies if any)
+        const SportsSlot = (await import('../models/SportsSlot.js')).default;
+        
+        // 1. Get the slot
+        const slot = await SportsSlot.findById(slotId).session(session);
+        if (!slot) {
+            await session.abortTransaction();
+            session.endSession();
+            return errorResponse(res, 404, 'NOT_FOUND', 'Selected slot not found');
+        }
+
+        // 2. Count active and pending subscriptions in this specific slot
+        const activeInSlot = await SubscriptionV2.countDocuments({
+            slotId,
+            status: { $in: ['Pending', 'Approved'] }
+        }).session(session);
+
+        // 3. Atomicity check
+        if (activeInSlot >= (slot.capacity || 1)) {
+            await session.abortTransaction();
+            session.endSession();
+            return errorResponse(res, 400, 'SLOT_FULL', 'This time slot is full. No more subscriptions allowed.');
         }
 
         // Build file URLs from multer
         const medicalCertUrl = req.files.medicalCert[0].path.replace(/\\/g, '/');
         const paymentReceiptUrl = req.files.paymentReceipt[0].path.replace(/\\/g, '/');
 
-        const subscription = await SubscriptionV2.create({
+        // Create the subscription within the transaction
+        const [subscription] = await SubscriptionV2.create([{
             userId,
             facilityType,
             plan,
+            slotId,
             medicalCertUrl,
             paymentReceiptUrl
-        });
+        }], { session });
+
+        await session.commitTransaction();
+        session.endSession();
 
         return successResponse(res, 201, {
             _id: subscription._id,
@@ -49,6 +83,8 @@ export const apply = async (req, res) => {
             status: subscription.status
         }, 'Subscription application submitted');
     } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
         return errorResponse(res, 500, 'SERVER_ERROR', error.message);
     }
 };
@@ -89,7 +125,8 @@ export const listForAdmin = async (req, res) => {
 
         const [subscriptions, total, occupancy] = await Promise.all([
             SubscriptionV2.find(query)
-                .populate('userId', 'name email')
+                .populate('userId', 'name email profileDetails')
+                .populate('slotId', 'startTime endTime capacity')
                 .sort({ createdAt: 1 })
                 .skip((pageNum - 1) * limitNum)
                 .limit(limitNum),
@@ -131,8 +168,8 @@ export const adminReview = async (req, res) => {
             return errorResponse(res, 403, 'FORBIDDEN', 'You are not allowed to review this subscription');
         }
 
-        if (subscription.status !== 'Pending') {
-            return errorResponse(res, 400, 'ALREADY_REVIEWED', 'This subscription has already been reviewed');
+        if (subscription.status !== 'Pending' && action !== 'revoke') {
+            return errorResponse(res, 400, 'INVALID_STATE', 'This subscription is not in a valid state for this action');
         }
 
         if (action === 'approve') {
@@ -158,8 +195,8 @@ export const adminReview = async (req, res) => {
                 passId: subscription.passId,
                 comments: subscription.reviewComments
             }, 'Subscription approved');
-        } else if (action === 'reject') {
-            subscription.status = 'Rejected';
+        } else if (action === 'reject' || action === 'revoke') {
+            subscription.status = action === 'revoke' ? 'Revoked' : 'Rejected';
             subscription.rejectionReason = rejectionReason || comments;
             subscription.reviewedBy = req.user._id;
             subscription.reviewedAt = new Date();
@@ -167,13 +204,13 @@ export const adminReview = async (req, res) => {
             await subscription.save();
 
             return successResponse(res, 200, {
-                status: 'Rejected',
+                status: subscription.status,
                 rejectionReason: subscription.rejectionReason,
                 comments: subscription.reviewComments
-            }, 'Subscription rejected');
+            }, `Subscription ${action === 'revoke' ? 'revoked' : 'rejected'}`);
         }
 
-        return errorResponse(res, 400, 'VALIDATION_ERROR', 'action must be approve or reject');
+        return errorResponse(res, 400, 'VALIDATION_ERROR', 'action must be approve, reject, or revoke');
     } catch (error) {
         return errorResponse(res, 500, 'SERVER_ERROR', error.message);
     }
@@ -266,3 +303,59 @@ export const getOccupancySummary = async (req, res) => {
         return errorResponse(res, 500, 'SERVER_ERROR', error.message);
     }
 };
+
+/**
+ * GET /api/v2/admin/subscriptions/slot-occupancy?facilityType=Gym
+ * Returns per-slot subscription counts for the current month.
+ */
+export const getSlotOccupancy = async (req, res) => {
+    try {
+        const { facilityType } = req.query;
+        const scopedTypes = getScopedSubscriptionTypes(req.user.roles, facilityType);
+
+        if (!scopedTypes.length) {
+            return errorResponse(res, 403, 'FORBIDDEN', 'Not authorized for this facility');
+        }
+
+        // Current month boundaries
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+        // Count active/pending subscriptions per slot for each scoped facility type
+        const results = await SubscriptionV2.aggregate([
+            {
+                $match: {
+                    facilityType: { $in: scopedTypes },
+                    slotId: { $ne: null },
+                    status: { $in: ['Pending', 'Approved'] },
+                    createdAt: { $lte: monthEnd },
+                    $or: [
+                        { endDate: null },
+                        { endDate: { $gte: monthStart } }
+                    ]
+                }
+            },
+            {
+                $group: {
+                    _id: '$slotId',
+                    activeCount: { $sum: 1 }
+                }
+            }
+        ]);
+
+        // Convert to a map: slotId -> count
+        const occupancyMap = {};
+        for (const row of results) {
+            occupancyMap[row._id.toString()] = row.activeCount;
+        }
+
+        return successResponse(res, 200, {
+            month: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`,
+            slotOccupancy: occupancyMap
+        });
+    } catch (error) {
+        return errorResponse(res, 500, 'SERVER_ERROR', error.message);
+    }
+};
+

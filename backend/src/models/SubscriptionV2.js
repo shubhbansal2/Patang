@@ -11,6 +11,11 @@ const subscriptionV2Schema = new mongoose.Schema({
         required: true,
         enum: ['Gym', 'SwimmingPool']
     },
+    slotId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'SportsSlot',
+        default: null
+    },
     plan: {
         type: String,
         required: true,

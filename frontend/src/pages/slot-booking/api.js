@@ -52,10 +52,11 @@ export const fetchSwimmingRegistrationPage = async () => {
   return unwrapApiResponse(response);
 };
 
-export const submitFacilityRegistration = async ({ facilityType, plan, medicalCert, paymentReceipt }) => {
+export const submitFacilityRegistration = async ({ facilityType, plan, slotId, medicalCert, paymentReceipt }) => {
   const formData = new FormData();
   formData.append('facilityType', facilityType);
   formData.append('plan', normalizePlanValue(plan));
+  if (slotId) formData.append('slotId', slotId);
   formData.append('medicalCert', medicalCert);
   formData.append('paymentReceipt', paymentReceipt);
 

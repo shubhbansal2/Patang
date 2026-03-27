@@ -5,8 +5,10 @@ import {
     loginUser, 
     forgotPassword, 
     resetPassword,
-    logoutUser
+    logoutUser,
+    updatePassword
 } from '../controllers/authController.js';
+import { protectRoute } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
@@ -16,5 +18,6 @@ router.post('/login', loginUser);
 router.post('/logout', logoutUser);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
+router.put('/update-password', protectRoute, updatePassword);
 
 export default router;

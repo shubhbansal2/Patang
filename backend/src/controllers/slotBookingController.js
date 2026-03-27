@@ -366,7 +366,7 @@ export const getGymRegistrationPage = async (req, res) => {
 
         const userId = req.user._id;
 
-        const [plans, currentSubscription, occupancy] = await Promise.all([
+        const [plans, currentSubscription, occupancy, slots] = await Promise.all([
             // Active gym plans from DB
             SubscriptionPlan.find({ type: 'gym', isActive: true })
                 .sort({ price: 1 })
@@ -379,12 +379,36 @@ export const getGymRegistrationPage = async (req, res) => {
                 facilityType: 'Gym',
                 status: { $in: ['Pending', 'Approved'] }
             })
-                .select('facilityType plan status startDate endDate qrCode passId createdAt')
+                .select('facilityType plan status startDate endDate qrCode passId createdAt slotId')
+                .populate('slotId', 'startTime endTime')
                 .maxTimeMS(5000)
                 .lean(),
 
             // Real-time occupancy
-            getFacilityOccupancySummary('Gym')
+            getFacilityOccupancySummary('Gym'),
+
+            // Fetch slots and their current subscription counts
+            (async () => {
+                const gymFac = await Facility.findOne({ facilityType: 'gym' }).lean();
+                if (!gymFac) return [];
+                const slots = await SportsSlot.find({ facility: gymFac._id, isActive: true }).sort({ startTime: 1 }).lean();
+                const slotsWithCapacity = await Promise.all(slots.map(async (slot) => {
+                    const activeCount = await SubscriptionV2.countDocuments({
+                        slotId: slot._id,
+                        status: { $in: ['Pending', 'Approved'] }
+                    });
+                    const cap = slot.capacity || gymFac.capacity || 1;
+                    return {
+                        _id: slot._id,
+                        startTime: slot.startTime,
+                        endTime: slot.endTime,
+                        capacity: cap,
+                        spotsLeft: Math.max(cap - activeCount, 0),
+                        activeCount
+                    };
+                }));
+                return slotsWithCapacity;
+            })()
         ]);
 
         // Build plan list — use DB records if available, otherwise use fallback pricing
@@ -439,6 +463,7 @@ export const getGymRegistrationPage = async (req, res) => {
                 available: occupancy.availableSlots,
                 status: occupancy.availableSlots > 0 ? 'AVAILABLE' : 'FULL'
             },
+            slots,
             paymentInstructions,
             quickRules: GYM_QUICK_RULES
         });
@@ -466,7 +491,7 @@ export const getSwimmingRegistrationPage = async (req, res) => {
 
         const userId = req.user._id;
 
-        const [plans, currentSubscription, occupancy] = await Promise.all([
+        const [plans, currentSubscription, occupancy, slots] = await Promise.all([
             SubscriptionPlan.find({ type: 'swimming', isActive: true })
                 .sort({ price: 1 })
                 .maxTimeMS(5000)
@@ -477,11 +502,35 @@ export const getSwimmingRegistrationPage = async (req, res) => {
                 facilityType: 'SwimmingPool',
                 status: { $in: ['Pending', 'Approved'] }
             })
-                .select('facilityType plan status startDate endDate qrCode passId createdAt')
+                .select('facilityType plan status startDate endDate qrCode passId createdAt slotId')
+                .populate('slotId', 'startTime endTime')
                 .maxTimeMS(5000)
                 .lean(),
 
-            getFacilityOccupancySummary('SwimmingPool')
+            getFacilityOccupancySummary('SwimmingPool'),
+
+            // Fetch slots and their current subscription counts
+            (async () => {
+                const swimFac = await Facility.findOne({ facilityType: 'swimming' }).lean();
+                if (!swimFac) return [];
+                const facSlots = await SportsSlot.find({ facility: swimFac._id, isActive: true }).sort({ startTime: 1 }).lean();
+                const slotsWithCapacity = await Promise.all(facSlots.map(async (slot) => {
+                    const activeCount = await SubscriptionV2.countDocuments({
+                        slotId: slot._id,
+                        status: { $in: ['Pending', 'Approved'] }
+                    });
+                    const cap = slot.capacity || swimFac.capacity || 1;
+                    return {
+                        _id: slot._id,
+                        startTime: slot.startTime,
+                        endTime: slot.endTime,
+                        capacity: cap,
+                        spotsLeft: Math.max(cap - activeCount, 0),
+                        activeCount
+                    };
+                }));
+                return slotsWithCapacity;
+            })()
         ]);
 
         // Build plan list
@@ -533,6 +582,7 @@ export const getSwimmingRegistrationPage = async (req, res) => {
                 available: occupancy.availableSlots,
                 status: occupancy.availableSlots > 0 ? 'AVAILABLE' : 'FULL'
             },
+            slots,
             paymentInstructions,
             quickRules: SWIMMING_QUICK_RULES
         });
