@@ -160,4 +160,57 @@ describe('slotBookingController', () => {
       })
     );
   });
+
+  it('marks slots as team practice when an approved captain block exists for the selected date', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-27T00:30:00+05:30'));
+
+    facilityFindMock.mockReturnValueOnce(createChain([
+      { _id: 'facility-1', name: 'Badminton Court 2', sportType: 'Badminton', location: 'Main Sports Complex', capacity: 4, metadata: {} },
+    ]));
+    sportsSlotFindMock.mockReturnValueOnce(createChain([
+      {
+        _id: 'slot-1',
+        facility: { _id: 'facility-1', name: 'Badminton Court 2', location: 'Main Sports Complex', sportType: 'Badminton', capacity: 4 },
+        isActive: true,
+        startTime: '07:00',
+        endTime: '08:00',
+        capacity: 4,
+        minPlayersRequired: 1,
+      },
+    ]));
+    sportsBookingFindMock
+      .mockReturnValueOnce(createChain([]))
+      .mockReturnValueOnce(createChain([]))
+      .mockReturnValueOnce(createChain([]));
+    bookingFindMock
+      .mockReturnValueOnce(createChain([]))
+      .mockReturnValueOnce(createChain([]));
+    teamPracticeBlockFindMock.mockReturnValueOnce(createChain([
+      {
+        facility: 'facility-1',
+        startTime: '07:00',
+        endTime: '08:00',
+        sport: 'Badminton',
+        captain: { name: 'Badminton Captain' },
+        practiceDate: new Date('2026-03-27T00:00:00.000Z'),
+      },
+    ]));
+
+    const req = {
+      user: { _id: 'user-1' },
+      query: { sportType: 'Badminton', date: '2026-03-27' },
+    };
+    const res = createMockRes();
+
+    await getSportsBookingPage(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data.courtSlots[0].slots[0]).toEqual(
+      expect.objectContaining({
+        status: 'Team Practice',
+        spotsLeft: 0,
+      })
+    );
+  });
 });

@@ -196,6 +196,7 @@ export const getPendingPracticeBlocks = async (req, res) => {
                 },
                 facility: b.facility,
                 sport: b.sport,
+                practiceDate: b.practiceDate,
                 startTime: b.startTime,
                 endTime: b.endTime,
                 daysOfWeek: b.daysOfWeek,
@@ -257,27 +258,16 @@ export const reviewPracticeBlock = async (req, res) => {
         }
 
         // ── Approve flow: check for conflicting bookings ─────────────────
-        // Look for existing confirmed bookings on the same facility
-        // on the relevant days of the week, overlapping with the block's time
-        const now = new Date();
         const [startH, startM] = block.startTime.split(':').map(Number);
         const [endH, endM] = block.endTime.split(':').map(Number);
 
-        // Check next 7 days for conflicts
         const conflicts = [];
-        for (let i = 0; i < 7; i++) {
-            const checkDate = new Date(now);
-            checkDate.setDate(checkDate.getDate() + i);
-            const dayOfWeek = checkDate.getDay();
-
-            if (!block.daysOfWeek.includes(dayOfWeek)) continue;
-
-            const dayStart = new Date(checkDate);
+        if (block.practiceDate) {
+            const dayStart = new Date(block.practiceDate);
             dayStart.setHours(startH, startM, 0, 0);
-            const dayEnd = new Date(checkDate);
+            const dayEnd = new Date(block.practiceDate);
             dayEnd.setHours(endH, endM, 0, 0);
 
-            // Check SportsBooking conflicts
             const sportsConflicts = await SportsBooking.find({
                 facility: block.facility._id,
                 slotStartAt: { $lt: dayEnd },
@@ -289,18 +279,58 @@ export const reviewPracticeBlock = async (req, res) => {
                 .maxTimeMS(5000)
                 .lean();
 
-            for (const c of sportsConflicts) {
+            for (const conflict of sportsConflicts) {
                 conflicts.push({
-                    date: checkDate.toISOString().slice(0, 10),
-                    dayOfWeek,
+                    date: block.practiceDate.toISOString().slice(0, 10),
+                    dayOfWeek: block.practiceDate.getDay(),
                     booking: {
-                        _id: c._id,
-                        user: c.user?.name || 'Unknown',
-                        slotStartAt: c.slotStartAt,
-                        slotEndAt: c.slotEndAt,
-                        status: c.status
+                        _id: conflict._id,
+                        user: conflict.user?.name || 'Unknown',
+                        slotStartAt: conflict.slotStartAt,
+                        slotEndAt: conflict.slotEndAt,
+                        status: conflict.status
                     }
                 });
+            }
+        } else {
+            const now = new Date();
+
+            for (let i = 0; i < 7; i++) {
+                const checkDate = new Date(now);
+                checkDate.setDate(checkDate.getDate() + i);
+                const dayOfWeek = checkDate.getDay();
+
+                if (!block.daysOfWeek.includes(dayOfWeek)) continue;
+
+                const dayStart = new Date(checkDate);
+                dayStart.setHours(startH, startM, 0, 0);
+                const dayEnd = new Date(checkDate);
+                dayEnd.setHours(endH, endM, 0, 0);
+
+                const sportsConflicts = await SportsBooking.find({
+                    facility: block.facility._id,
+                    slotStartAt: { $lt: dayEnd },
+                    slotEndAt: { $gt: dayStart },
+                    status: { $in: ['confirmed', 'group_pending'] }
+                })
+                    .populate('user', 'name email')
+                    .select('user slotStartAt slotEndAt status')
+                    .maxTimeMS(5000)
+                    .lean();
+
+                for (const conflict of sportsConflicts) {
+                    conflicts.push({
+                        date: checkDate.toISOString().slice(0, 10),
+                        dayOfWeek,
+                        booking: {
+                            _id: conflict._id,
+                            user: conflict.user?.name || 'Unknown',
+                            slotStartAt: conflict.slotStartAt,
+                            slotEndAt: conflict.slotEndAt,
+                            status: conflict.status
+                        }
+                    });
+                }
             }
         }
 

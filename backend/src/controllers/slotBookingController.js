@@ -171,6 +171,7 @@ export const getSportsBookingPage = async (req, res) => {
         if (matchingFacilities.length > 0 && dateBounds) {
             const facilityIds = matchingFacilities.map(f => f._id);
             const dayOfWeek = dateBounds.dateObj.getDay();
+            const practiceDate = new Date(dateBounds.start);
 
             // Get slot templates for these facilities
             const slotTemplates = await SportsSlot.find({
@@ -278,10 +279,16 @@ export const getSportsBookingPage = async (req, res) => {
             const practiceBlocks = await TeamPracticeBlock.find({
                 facility: { $in: facilityIds },
                 status: 'approved',
-                daysOfWeek: dayOfWeek
+                $or: [
+                    { practiceDate },
+                    {
+                        practiceDate: { $exists: false },
+                        daysOfWeek: dayOfWeek
+                    }
+                ]
             })
                 .populate('captain', 'name')
-                .select('facility startTime endTime captain sport')
+                .select('facility startTime endTime captain sport practiceDate')
                 .maxTimeMS(5000)
                 .lean();
 

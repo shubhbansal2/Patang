@@ -37,6 +37,7 @@ const userSchema = new mongoose.Schema({
         program: { type: String },
         department: { type: String },
         designation: { type: String },
+        sportType: { type: String },
         assignedFacilities: [{ type: mongoose.Schema.Types.ObjectId }]
     },
     fairUseScore: {

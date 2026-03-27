@@ -3,6 +3,33 @@ import TeamPracticeBlock from '../models/TeamPracticeBlock.js';
 import SportsBooking from '../models/SportsBooking.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
 
+const normalizeSport = (value) => String(value || '').trim().toLowerCase();
+
+const canCaptainSelfApprove = (captainSport, facilitySport) => (
+    normalizeSport(captainSport) &&
+    normalizeSport(captainSport) === normalizeSport(facilitySport)
+);
+
+const resolveOperationalFacility = async (facilityId) => {
+    const facility = await Facility.findById(facilityId).lean();
+    if (!facility) {
+        return null;
+    }
+
+    if (facility.facilityType === 'sports' && facility.isOperational !== false) {
+        return facility;
+    }
+
+    const canonicalFacility = await Facility.findOne({
+        facilityType: 'sports',
+        isOperational: true,
+        sportType: facility.sportType,
+        name: facility.name
+    }).lean();
+
+    return canonicalFacility || facility;
+};
+
 // ═════════════════════════════════════════════════════════════════════════════
 // 1. CREATE TEAM PRACTICE BLOCK
 // ═════════════════════════════════════════════════════════════════════════════
@@ -10,11 +37,10 @@ import { successResponse, errorResponse } from '../utils/apiResponse.js';
 /**
  * POST /api/captain/practice-blocks
  *
- * Captain requests a recurring practice block for their sport.
- * Block repeats every day except Sundays (daysOfWeek: [1,2,3,4,5,6]).
- * Goes to executive for approval.
+ * Captain requests a practice block for a specific future date.
+ * Same-sport facilities are approved immediately; other facilities go to executive.
  *
- * Body: { facilityId, startTime, endTime, notes }
+ * Body: { facilityId, practiceDate, startTime, endTime, notes }
  */
 export const createTeamPracticeBlock = async (req, res) => {
     try {
@@ -32,11 +58,14 @@ export const createTeamPracticeBlock = async (req, res) => {
         //     return errorResponse(res, 400, 'NO_SPORT_ASSIGNED', 'You have not been assigned a sport. Contact an executive.');
         // }
 
-        const { facilityId, startTime, endTime, notes } = req.body;
+        const { facilityId, practiceDate, startTime, endTime, notes } = req.body;
 
         // Validation
         if (!facilityId) {
             return errorResponse(res, 400, 'VALIDATION_ERROR', 'Facility ID is required');
+        }
+        if (!practiceDate) {
+            return errorResponse(res, 400, 'VALIDATION_ERROR', 'Practice date is required');
         }
         if (!startTime || !endTime) {
             return errorResponse(res, 400, 'VALIDATION_ERROR', 'Start time and end time are required (e.g. "06:00", "08:00")');
@@ -52,8 +81,22 @@ export const createTeamPracticeBlock = async (req, res) => {
             return errorResponse(res, 400, 'VALIDATION_ERROR', 'End time must be after start time');
         }
 
+        const normalizedPracticeDate = new Date(practiceDate);
+        if (Number.isNaN(normalizedPracticeDate.getTime())) {
+            return errorResponse(res, 400, 'VALIDATION_ERROR', 'Practice date must be a valid date');
+        }
+
+        const startOfRequestedDay = new Date(normalizedPracticeDate);
+        startOfRequestedDay.setHours(0, 0, 0, 0);
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+
+        if (startOfRequestedDay < startOfToday) {
+            return errorResponse(res, 400, 'VALIDATION_ERROR', 'Practice date must be today or in the future');
+        }
+
         // Verify facility exists and matches captain's sport
-        const facility = await Facility.findById(facilityId).lean();
+        const facility = await resolveOperationalFacility(facilityId);
         if (!facility) {
             return errorResponse(res, 404, 'FACILITY_NOT_FOUND', 'Facility not found');
         }
@@ -68,28 +111,31 @@ export const createTeamPracticeBlock = async (req, res) => {
         // Check if captain already has an active/pending block for this facility
         const existingBlock = await TeamPracticeBlock.findOne({
             captain: req.user._id,
-            facility: facilityId,
+            facility: facility._id,
+            practiceDate: startOfRequestedDay,
             status: { $in: ['pending', 'approved'] }
         }).lean();
 
         if (existingBlock) {
             return errorResponse(res, 409, 'BLOCK_EXISTS',
-                'You already have an active or pending practice block for this facility. Edit or cancel it first.',
+                'You already have an active or pending practice block for this facility on the selected date. Edit or cancel it first.',
                 { existingBlockId: existingBlock._id, existingStatus: existingBlock.status }
             );
         }
 
-        // Days of week: Mon(1) through Sat(6) — exclude Sunday(0)
-        const daysOfWeek = [1, 2, 3, 4, 5, 6];
+        const daysOfWeek = [startOfRequestedDay.getDay()];
+
+        const selfApproved = canCaptainSelfApprove(req.user.captainOf, facility.sportType);
 
         const block = await TeamPracticeBlock.create({
             captain: req.user._id,
-            facility: facilityId,
+            facility: facility._id,
             sport: req.user.captainOf || facility.sportType || 'General',
+            practiceDate: startOfRequestedDay,
             startTime,
             endTime,
             daysOfWeek,
-            status: 'pending',
+            status: selfApproved ? 'approved' : 'pending',
             notes: notes?.trim() || null
         });
 
@@ -97,12 +143,17 @@ export const createTeamPracticeBlock = async (req, res) => {
             _id: block._id,
             facility: facility.name,
             sport: block.sport,
+            practiceDate: block.practiceDate,
             startTime: block.startTime,
             endTime: block.endTime,
             daysOfWeek: block.daysOfWeek,
             status: block.status,
-            message: 'Practice block request submitted for executive approval.'
-        }, 'Practice block request submitted for executive approval');
+            message: selfApproved
+                ? 'Practice block approved and reserved immediately.'
+                : 'Practice block request submitted for executive approval.'
+        }, selfApproved
+            ? 'Practice block approved and reserved immediately'
+            : 'Practice block request submitted for executive approval');
     } catch (error) {
         console.error('[Captain/CreateBlock] Error:', error);
         return errorResponse(res, 500, 'SERVER_ERROR', error.message);
@@ -136,6 +187,7 @@ export const getMyPracticeBlocks = async (req, res) => {
                 _id: b._id,
                 facility: b.facility,
                 sport: b.sport,
+                practiceDate: b.practiceDate,
                 startTime: b.startTime,
                 endTime: b.endTime,
                 daysOfWeek: b.daysOfWeek,
@@ -163,7 +215,7 @@ export const getMyPracticeBlocks = async (req, res) => {
  * Captain edits their practice block timings.
  * Resets status to 'pending' for executive re-approval.
  *
- * Body: { startTime, endTime, notes }
+ * Body: { practiceDate, startTime, endTime, notes }
  */
 export const editTeamPracticeBlock = async (req, res) => {
     try {
@@ -172,7 +224,7 @@ export const editTeamPracticeBlock = async (req, res) => {
         }
 
         const { blockId } = req.params;
-        const { startTime, endTime, notes } = req.body;
+        const { practiceDate, startTime, endTime, notes } = req.body;
 
         const block = await TeamPracticeBlock.findById(blockId);
         if (!block) {
@@ -209,12 +261,36 @@ export const editTeamPracticeBlock = async (req, res) => {
             return errorResponse(res, 400, 'VALIDATION_ERROR', 'End time must be after start time');
         }
 
+        if (practiceDate !== undefined) {
+            const normalizedPracticeDate = new Date(practiceDate);
+            if (Number.isNaN(normalizedPracticeDate.getTime())) {
+                return errorResponse(res, 400, 'VALIDATION_ERROR', 'Practice date must be a valid date');
+            }
+
+            const startOfRequestedDay = new Date(normalizedPracticeDate);
+            startOfRequestedDay.setHours(0, 0, 0, 0);
+            const startOfToday = new Date();
+            startOfToday.setHours(0, 0, 0, 0);
+
+            if (startOfRequestedDay < startOfToday) {
+                return errorResponse(res, 400, 'VALIDATION_ERROR', 'Practice date must be today or in the future');
+            }
+
+            block.practiceDate = startOfRequestedDay;
+            block.daysOfWeek = [startOfRequestedDay.getDay()];
+        }
+
         if (notes !== undefined) {
             block.notes = notes?.trim() || null;
         }
 
-        // Reset status to pending for executive re-approval
-        block.status = 'pending';
+        const facility = await resolveOperationalFacility(block.facility);
+        if (facility?._id && String(block.facility) !== String(facility._id)) {
+            block.facility = facility._id;
+        }
+        const selfApproved = canCaptainSelfApprove(req.user.captainOf, facility?.sportType);
+
+        block.status = selfApproved ? 'approved' : 'pending';
         block.reviewedBy = null;
         block.reviewedAt = null;
         block.rejectionReason = null;
@@ -223,11 +299,14 @@ export const editTeamPracticeBlock = async (req, res) => {
 
         return successResponse(res, 200, {
             _id: block._id,
+            practiceDate: block.practiceDate,
             startTime: block.startTime,
             endTime: block.endTime,
             status: block.status,
             notes: block.notes
-        }, 'Practice block updated. Sent for executive re-approval.');
+        }, selfApproved
+            ? 'Practice block updated and remains reserved immediately.'
+            : 'Practice block updated. Sent for executive re-approval.');
     } catch (error) {
         console.error('[Captain/EditBlock] Error:', error);
         return errorResponse(res, 500, 'SERVER_ERROR', error.message);

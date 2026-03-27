@@ -2,6 +2,7 @@ import Facility from '../models/Facility.js';
 import SportsSlot from '../models/SportsSlot.js';
 import FacilityBlock from '../models/FacilityBlock.js';
 import SportsBooking from '../models/SportsBooking.js';
+import TeamPracticeBlock from '../models/TeamPracticeBlock.js';
 import User from '../models/User.js';
 import mongoose from 'mongoose';
 
@@ -67,6 +68,29 @@ const getDateRange = (dateInput) => {
     return { start, end };
 };
 
+const getStartOfDay = (dateInput) => {
+    const date = dateInput ? new Date(dateInput) : new Date();
+
+    if (Number.isNaN(date.getTime())) {
+        return null;
+    }
+
+    date.setHours(0, 0, 0, 0);
+    return date;
+};
+
+const findCaptainPracticeBlock = ({ facilityId, slotStartAt, slotEndAt, practiceDate }) => (
+    TeamPracticeBlock.findOne({
+        facility: facilityId,
+        status: 'approved',
+        ...(practiceDate ? { practiceDate } : {}),
+        startTime: { $lt: slotEndAt.toTimeString().slice(0, 5) },
+        endTime: { $gt: slotStartAt.toTimeString().slice(0, 5) }
+    })
+        .populate('captain', 'name email profileDetails.rollNumber profileDetails.department')
+        .populate('facility', 'name location sportType capacity')
+);
+
 const getCaretakerFacilityFilter = (req) => {
     if (req.user.roles?.some((role) => ['admin', 'executive'].includes(role))) {
         return null;
@@ -116,7 +140,9 @@ export const checkAvailability = async (req, res) => {
             return res.status(400).json({ message: 'Invalid slot date/time combination' });
         }
 
-        const [existingBookings, quotaUsage, activeBlock] = await Promise.all([
+        const practiceDate = getStartOfDay(bookingDate);
+
+        const [existingBookings, quotaUsage, activeBlock, activePracticeBlock] = await Promise.all([
             SportsBooking.find({
                 slot: slot._id,
                 bookingDate: {
@@ -135,6 +161,12 @@ export const checkAvailability = async (req, res) => {
                 status: 'approved',
                 startTime: { $lt: slotEndAt },
                 endTime: { $gt: slotStartAt }
+            }),
+            findCaptainPracticeBlock({
+                facilityId: slot.facility._id,
+                slotStartAt,
+                slotEndAt,
+                practiceDate
             })
         ]);
 
@@ -149,8 +181,10 @@ export const checkAvailability = async (req, res) => {
             remainingCapacity: Math.max(slot.capacity - activeBookings, 0),
             userQuotaUsage: quotaUsage,
             quotaLimit: 2,
-            isBlocked: Boolean(activeBlock),
-            blockReason: activeBlock?.reason ?? null
+            isBlocked: Boolean(activeBlock || activePracticeBlock),
+            blockReason: activePracticeBlock
+                ? `team practice booked by ${activePracticeBlock.captain?.name || 'captain'}`
+                : activeBlock?.reason ?? null
         });
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -205,7 +239,9 @@ export const createBooking = async (req, res) => {
             return res.status(400).json({ message: 'participantCount cannot exceed the slot capacity' });
         }
 
-        const [quotaUsage, activeBlock, existingBookings, existingBooking] = await Promise.all([
+        const practiceDate = getStartOfDay(bookingDate);
+
+        const [quotaUsage, activeBlock, activePracticeBlock, existingBookings, existingBooking] = await Promise.all([
             SportsBooking.countDocuments({
                 user: req.user._id,
                 slotStartAt: getQuotaWindow(slotStartAt),
@@ -216,6 +252,12 @@ export const createBooking = async (req, res) => {
                 status: 'approved',
                 startTime: { $lt: slotEndAt },
                 endTime: { $gt: slotStartAt }
+            }),
+            findCaptainPracticeBlock({
+                facilityId: slot.facility._id,
+                slotStartAt,
+                slotEndAt,
+                practiceDate
             }),
             SportsBooking.find({
                 slot: slot._id,
@@ -242,6 +284,12 @@ export const createBooking = async (req, res) => {
 
         if (activeBlock) {
             return res.status(400).json({ message: `Slot unavailable due to ${activeBlock.reason}` });
+        }
+
+        if (activePracticeBlock) {
+            return res.status(400).json({
+                message: `Slot unavailable due to team practice booked by ${activePracticeBlock.captain?.name || 'captain'}`
+            });
         }
 
         const activeBookings = existingBookings.reduce((sum, booking) => sum + getBookingParticipantCount(booking), 0);
@@ -316,11 +364,28 @@ export const listBookingsForCaretaker = async (req, res) => {
             query.facility = { $in: facilityScope };
         }
 
-        const bookings = await SportsBooking.find(query)
+        const practiceBlockQuery = {
+            status: 'approved',
+            practiceDate: dateRange.start
+        };
+
+        if (facilityId) {
+            practiceBlockQuery.facility = facilityId;
+        } else if (facilityScope) {
+            practiceBlockQuery.facility = { $in: facilityScope };
+        }
+
+        const [bookings, practiceBlocks] = await Promise.all([
+            SportsBooking.find(query)
             .populate('facility', 'name location sportType capacity')
             .populate('slot', 'startTime endTime capacity minPlayersRequired')
             .populate('user', 'name email profileDetails.rollNumber profileDetails.department')
-            .sort({ slotStartAt: 1 });
+            .sort({ slotStartAt: 1 }),
+            TeamPracticeBlock.find(practiceBlockQuery)
+                .populate('facility', 'name location sportType capacity')
+                .populate('captain', 'name email profileDetails.rollNumber profileDetails.department')
+                .sort({ startTime: 1 })
+        ]);
 
         const normalizedBookings = bookings
             .filter((booking) => !sportType || booking.facility?.sportType === sportType)
@@ -337,7 +402,43 @@ export const listBookingsForCaretaker = async (req, res) => {
                 bookedBy: booking.user,
             }));
 
-        return res.json({ bookings: normalizedBookings });
+        const normalizedPracticeBlocks = practiceBlocks
+            .filter((block) => !sportType || block.facility?.sportType === sportType || block.sport === sportType)
+            .map((block) => {
+                const slotStartAt = new Date(dateRange.start);
+                const [startHours, startMinutes] = (block.startTime || '00:00').split(':').map(Number);
+                slotStartAt.setHours(startHours, startMinutes, 0, 0);
+
+                const slotEndAt = new Date(dateRange.start);
+                const [endHours, endMinutes] = (block.endTime || '00:00').split(':').map(Number);
+                slotEndAt.setHours(endHours, endMinutes, 0, 0);
+
+                return {
+                    _id: block._id,
+                    kind: 'practice_block',
+                    status: 'team_practice',
+                    attendanceStatus: null,
+                    slotStartAt,
+                    slotEndAt,
+                    participantCount: null,
+                    isGroupBooking: false,
+                    facility: block.facility,
+                    slot: {
+                        startTime: block.startTime,
+                        endTime: block.endTime,
+                        capacity: block.facility?.capacity || null,
+                        minPlayersRequired: null
+                    },
+                    bookedBy: block.captain,
+                    sport: block.sport
+                };
+            });
+
+        const combinedBookings = [...normalizedBookings, ...normalizedPracticeBlocks].sort(
+            (left, right) => new Date(left.slotStartAt) - new Date(right.slotStartAt)
+        );
+
+        return res.json({ bookings: combinedBookings });
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }

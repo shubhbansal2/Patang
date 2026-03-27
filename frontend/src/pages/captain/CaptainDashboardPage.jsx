@@ -19,6 +19,14 @@ const formatDate = (dateStr) => {
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
+const getTodayValue = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const StatusBadge = ({ status }) => {
   const colors = {
     pending: 'bg-amber-50 text-amber-600 border-amber-200',
@@ -43,12 +51,12 @@ const CaptainDashboardPage = () => {
   // Add Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [facilities, setFacilities] = useState([]);
-  const [formData, setFormData] = useState({ facilityId: '', startTime: '', endTime: '', notes: '' });
+  const [formData, setFormData] = useState({ facilityId: '', practiceDate: getTodayValue(), startTime: '', endTime: '', notes: '' });
   const [formLoading, setFormLoading] = useState(false);
 
   // Edit Modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editData, setEditData] = useState({ id: '', startTime: '', endTime: '', notes: '' });
+  const [editData, setEditData] = useState({ id: '', practiceDate: getTodayValue(), startTime: '', endTime: '', notes: '' });
   const [editLoading, setEditLoading] = useState(false);
 
   const fetchBlocks = async () => {
@@ -126,7 +134,7 @@ const CaptainDashboardPage = () => {
     try {
       await api.post('/captain/practice-blocks', formData);
       setIsModalOpen(false);
-      setFormData({ facilityId: '', startTime: '', endTime: '', notes: '' });
+      setFormData({ facilityId: '', practiceDate: getTodayValue(), startTime: '', endTime: '', notes: '' });
       fetchBlocks();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to add block');
@@ -140,12 +148,13 @@ const CaptainDashboardPage = () => {
     setEditLoading(true);
     try {
       await api.patch(`/captain/practice-blocks/${editData.id}`, {
+        practiceDate: editData.practiceDate,
         startTime: editData.startTime,
         endTime: editData.endTime,
         notes: editData.notes
       });
       setIsEditModalOpen(false);
-      setEditData({ id: '', startTime: '', endTime: '', notes: '' });
+      setEditData({ id: '', practiceDate: getTodayValue(), startTime: '', endTime: '', notes: '' });
       fetchBlocks();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to update block timings');
@@ -191,7 +200,7 @@ const CaptainDashboardPage = () => {
                     <h4 className="text-sm font-bold text-gray-800">{block.facility?.name || 'Facility'}</h4>
                     <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                       <Calendar size={12} />
-                      Mon-Sat • {formatTime(block.startTime)} to {formatTime(block.endTime)}
+                      {formatDate(block.practiceDate)} • {formatTime(block.startTime)} to {formatTime(block.endTime)}
                     </p>
                     {block.notes && <p className="text-xs text-gray-400 mt-2 italic">"{block.notes}"</p>}
                     {block.rejectionReason && (
@@ -205,7 +214,13 @@ const CaptainDashboardPage = () => {
                           <div className="flex items-center gap-2">
                             <button 
                               onClick={() => {
-                                setEditData({ id: block._id, startTime: block.startTime, endTime: block.endTime, notes: block.notes || '' });
+                                setEditData({
+                                  id: block._id,
+                                  practiceDate: block.practiceDate ? new Date(block.practiceDate).toISOString().slice(0, 10) : getTodayValue(),
+                                  startTime: block.startTime,
+                                  endTime: block.endTime,
+                                  notes: block.notes || ''
+                                });
                                 setIsEditModalOpen(true);
                               }}
                               title="Edit Timing"
@@ -248,7 +263,7 @@ const CaptainDashboardPage = () => {
             {user?.captainOf ? `${user.captainOf} Captain` : 'Captain'}
           </p>
           <p className="text-xs text-gray-400 mt-3 px-4">
-            As captain, you can request and manage recurring team practice slots for all sports facilities.
+            As captain, you can request and manage future team practice slots that block the facility for other users once approved.
           </p>
         </div>
         
@@ -257,9 +272,9 @@ const CaptainDashboardPage = () => {
              <Tag size={16} /> Quick Guidelines
            </div>
            <ul className="text-xs text-blue-600 space-y-2 list-disc pl-4">
-             <li>Practice blocks are valid Monday through Saturday.</li>
+             <li>Practice blocks can be requested for any future date.</li>
              <li>All requests must be approved by an executive.</li>
-             <li>Repeated no-shows by your team may result in block cancellation.</li>
+             <li>Once approved, that facility slot becomes unavailable for regular users.</li>
            </ul>
         </div>
       </div>
@@ -292,6 +307,17 @@ const CaptainDashboardPage = () => {
                 <p className="mt-2 text-[11px] text-red-600 bg-red-50 p-2 rounded-lg border border-red-100 leading-relaxed">
                   <strong className="font-semibold">Note:</strong> You can directly book <strong className="font-semibold">{user?.captainOf || 'your sport\'s'}</strong> courts. If you wish to book a court or ground belonging to another sport, you will have to wait for the approval of that sport's team captain.
                 </p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Practice Date</label>
+                <input
+                  type="date"
+                  required
+                  min={getTodayValue()}
+                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 outline-none"
+                  value={formData.practiceDate}
+                  onChange={(e) => setFormData({ ...formData, practiceDate: e.target.value })}
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -350,6 +376,17 @@ const CaptainDashboardPage = () => {
               </button>
             </div>
             <form onSubmit={handleEditSubmit} className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1.5">Practice Date</label>
+                <input
+                  type="date"
+                  required
+                  min={getTodayValue()}
+                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 outline-none"
+                  value={editData.practiceDate}
+                  onChange={(e) => setEditData({ ...editData, practiceDate: e.target.value })}
+                />
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-600 mb-1.5">Start Time</label>

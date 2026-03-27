@@ -87,4 +87,34 @@ describe('SportsCaretakerPage', () => {
     });
     expect(await screen.findByText(/marked present/i)).toBeInTheDocument();
   });
+
+  it('renders captain-reserved practice blocks without attendance controls', async () => {
+    getMock.mockResolvedValueOnce({
+      data: {
+        bookings: [
+          {
+            _id: 'practice-1',
+            kind: 'practice_block',
+            status: 'team_practice',
+            slotStartAt: '2026-03-27T01:30:00.000Z',
+            slotEndAt: '2026-03-27T02:30:00.000Z',
+            sport: 'Badminton',
+            facility: { name: 'Badminton Court 1', sportType: 'Badminton', location: 'Sports Complex Hall A' },
+            bookedBy: {
+              name: 'Badminton Captain',
+              email: 'captain@iitk.ac.in',
+              profileDetails: { department: 'Sports Council' },
+            },
+          },
+        ],
+      },
+    });
+
+    render(<SportsCaretakerPage />);
+
+    expect(await screen.findByText(/team practice/i)).toBeInTheDocument();
+    expect(screen.getByText(/blocks this slot for all users/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/badminton captain/i).length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: /mark present/i })).not.toBeInTheDocument();
+  });
 });

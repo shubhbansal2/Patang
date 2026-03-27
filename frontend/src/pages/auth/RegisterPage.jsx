@@ -25,17 +25,41 @@ const RegisterPage = () => {
     e.preventDefault();
     setError('');
 
+    const n = name.trim();
+    const em = email.trim();
     const p = password.trim();
     const cp = confirmPassword.trim();
+    const rn = rollNumber.trim();
+
+    if (!n) {
+      setError('Full name is required');
+      return;
+    }
+
+    if (!em) {
+      setError('Email address is required');
+      return;
+    }
+
+    if (userType === 'student' && !rn) {
+      setError('Roll number is required for students');
+      return;
+    }
+
+    if (!p) {
+      setError('Password is required');
+      return;
+    }
 
     if (p !== cp) {
       setError('Passwords do not match');
       return;
     }
+
     const result = await register(
-      name.trim(), 
-      email.trim(), 
-      userType === 'student' ? rollNumber.trim() : '', 
+      n, 
+      em, 
+      userType === 'student' ? rn : '', 
       p, 
       cp, 
       userType
@@ -61,12 +85,16 @@ const RegisterPage = () => {
 
   const handleResendOtp = async () => {
     setError('');
+    const n = name.trim();
+    const em = email.trim();
     const p = password.trim();
     const cp = confirmPassword.trim();
+    const rn = rollNumber.trim();
+
     const result = await register(
-      name.trim(),
-      email.trim(),
-      userType === 'student' ? rollNumber.trim() : '',
+      n,
+      em,
+      userType === 'student' ? rn : '',
       p,
       cp,
       userType
@@ -125,7 +153,7 @@ const RegisterPage = () => {
 
             <form onSubmit={handleRegister} className="space-y-5">
               <div>
-                <label htmlFor="register-name" className="block text-sm font-medium text-gray-600 mb-1.5">Full Name</label>
+                <label htmlFor="register-name" className="block text-sm font-medium text-gray-600 mb-1.5">Full Name <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input id="register-name" name="name" type="text" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)}
@@ -135,7 +163,7 @@ const RegisterPage = () => {
               </div>
 
               <div>
-                <label htmlFor="register-email" className="block text-sm font-medium text-gray-600 mb-1.5">Email Address</label>
+                <label htmlFor="register-email" className="block text-sm font-medium text-gray-600 mb-1.5">Email Address <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input id="register-email" name="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)}
@@ -147,7 +175,7 @@ const RegisterPage = () => {
 
               {userType === 'student' && (
                 <div>
-                  <label htmlFor="register-roll" className="block text-sm font-medium text-gray-600 mb-1.5">Roll Number</label>
+                  <label htmlFor="register-roll" className="block text-sm font-medium text-gray-600 mb-1.5">Roll Number <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input id="register-roll" name="rollNumber" type="text" value={rollNumber} onChange={(e) => setRollNumber(e.target.value)}
@@ -158,7 +186,7 @@ const RegisterPage = () => {
               )}
 
               <div>
-                <label htmlFor="register-password" className="block text-sm font-medium text-gray-600 mb-1.5">Password</label>
+                <label htmlFor="register-password" className="block text-sm font-medium text-gray-600 mb-1.5">Password <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input id="register-password" name="password" type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)}
@@ -172,7 +200,7 @@ const RegisterPage = () => {
               </div>
 
               <div>
-                <label htmlFor="register-confirm" className="block text-sm font-medium text-gray-600 mb-1.5">Confirm Password</label>
+                <label htmlFor="register-confirm" className="block text-sm font-medium text-gray-600 mb-1.5">Confirm Password <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input id="register-confirm" name="confirmPassword" type={showConfirm ? 'text' : 'password'} autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
