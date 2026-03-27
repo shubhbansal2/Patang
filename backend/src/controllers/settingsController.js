@@ -112,6 +112,10 @@ export const updateProfile = async (req, res) => {
         if (department !== undefined) user.profileDetails.department = department?.trim() || null;
         if (designation !== undefined) user.profileDetails.designation = designation?.trim() || null;
 
+        if (!user.name) {
+            user.name = user.email.split('@')[0];
+        }
+
         await user.save();
 
         return successResponse(res, 200, {
@@ -172,6 +176,10 @@ export const changePassword = async (req, res) => {
         }
 
         // Update password (pre-save hook will hash it)
+        if (!user.name) {
+            user.name = user.email.split('@')[0];
+        }
+
         user.password = newPassword;
         await user.save();
 

@@ -95,7 +95,7 @@ const SettingsPage = () => {
       setProfileMsg({ type: 'success', text: 'Profile updated successfully!' });
       setTimeout(() => setProfileMsg({ type: '', text: '' }), 3000);
     } catch (err) {
-      setProfileMsg({ type: 'error', text: err.response?.data?.message || 'Failed to update profile.' });
+      setProfileMsg({ type: 'error', text: err.response?.data?.error?.message || err.response?.data?.message || 'Failed to update profile.' });
     } finally {
       setSavingProfile(false);
     }
@@ -116,7 +116,7 @@ const SettingsPage = () => {
       setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
       setTimeout(() => setPwMsg({ type: '', text: '' }), 3000);
     } catch (err) {
-      setPwMsg({ type: 'error', text: err.response?.data?.message || 'Failed to change password.' });
+      setPwMsg({ type: 'error', text: err.response?.data?.error?.message || err.response?.data?.message || 'Failed to change password.' });
     } finally {
       setSavingPw(false);
     }
