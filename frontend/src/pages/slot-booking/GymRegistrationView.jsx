@@ -83,8 +83,8 @@ const SubscriptionRegistrationView = ({
     }
 
     if (!selectedSlotId && data?.slots?.length) {
-      const availableSlot = data.slots.find(s => s.registered < s.capacity) || data.slots[0];
-      setSelectedSlotId(availableSlot.id);
+      const availableSlot = data.slots.find(s => s.activeCount < s.capacity) || data.slots[0];
+      setSelectedSlotId(availableSlot._id);
     }
   }, [data, selectedPlanId, selectedSlotId]);
 
@@ -313,14 +313,14 @@ const SubscriptionRegistrationView = ({
               {data?.slots?.length ? (
                 <div className="mt-5 grid gap-4 grid-cols-2 sm:grid-cols-3">
                   {data.slots.map((slot) => {
-                    const isSelected = slot.id === selectedSlotId;
-                    const isFull = slot.registered >= slot.capacity;
+                    const isSelected = slot._id === selectedSlotId;
+                    const isFull = slot.activeCount >= slot.capacity;
                     return (
                       <button
-                        key={slot.id}
+                        key={slot._id}
                         type="button"
                         disabled={isFormLocked || isFull}
-                        onClick={() => setSelectedSlotId(slot.id)}
+                        onClick={() => setSelectedSlotId(slot._id)}
                         className={`group relative flex flex-col items-center justify-center gap-1 rounded-2xl border p-4 text-center transition-all ${
                           isSelected
                             ? 'border-brand-500 bg-brand-50 shadow-[inset_0_0_0_1px_rgba(var(--brand-500),0.3)]'
@@ -333,7 +333,7 @@ const SubscriptionRegistrationView = ({
                           {slot.startTime} - {slot.endTime}
                         </p>
                         <p className={`text-[10px] font-semibold uppercase tracking-[0.1em] ${isFull ? 'text-red-500' : 'text-gray-500'}`}>
-                           {isFull ? 'Full capacity' : `${slot.capacity - slot.registered} slots left`}
+                           {isFull ? 'Full capacity' : `${slot.spotsLeft} slots left`}
                         </p>
                       </button>
                     )
