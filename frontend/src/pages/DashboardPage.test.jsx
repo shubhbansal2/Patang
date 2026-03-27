@@ -157,4 +157,61 @@ describe('DashboardPage', () => {
 
     promptMock.mockRestore();
   });
+
+  it('updates the player count through the modify booking action', async () => {
+    const user = userEvent.setup();
+    const promptMock = vi.spyOn(window, 'prompt').mockReturnValue('4');
+
+    getMock
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            subscriptions: [],
+            upcomingBookings: [
+              {
+                _id: 'booking-1',
+                facilityName: 'Badminton Court 2',
+                slotStart: '2026-03-27T03:30:00.000Z',
+                status: 'confirmed',
+                participantCount: 1,
+                source: 'v2',
+              },
+            ],
+            fairUse: { score: 'High', message: 'Good standing' },
+            penalties: { totalActiveCount: 0, activePenalties: [] },
+            upcomingEvents: [],
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            subscriptions: [],
+            upcomingBookings: [
+              {
+                _id: 'booking-1',
+                facilityName: 'Badminton Court 2',
+                slotStart: '2026-03-27T03:30:00.000Z',
+                status: 'confirmed',
+                participantCount: 4,
+                source: 'v2',
+              },
+            ],
+            fairUse: { score: 'High', message: 'Good standing' },
+            penalties: { totalActiveCount: 0, activePenalties: [] },
+            upcomingEvents: [],
+          },
+        },
+      });
+    patchMock.mockResolvedValueOnce({ data: {} });
+
+    render(<DashboardPage />);
+
+    await user.click(await screen.findByRole('button', { name: /modify/i }));
+
+    expect(patchMock).toHaveBeenCalledWith('/bookings/booking-1', { participantCount: 4 });
+    expect(await screen.findByText(/was updated to 4 players/i)).toBeInTheDocument();
+
+    promptMock.mockRestore();
+  });
 });
