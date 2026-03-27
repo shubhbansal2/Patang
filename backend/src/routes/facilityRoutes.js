@@ -4,7 +4,8 @@ import {
     createFacility,
     createSportsSlot,
     getFacilitySlots,
-    createFacilityBlock
+    createFacilityBlock,
+    updateSportsSlot
 } from '../controllers/facilityController.js';
 import { protectRoute, authorizeRoles } from '../middlewares/authMiddleware.js';
 
@@ -14,6 +15,7 @@ router.get('/', protectRoute, listFacilities);
 router.get('/:facilityId/slots', protectRoute, getFacilitySlots);
 router.post('/', protectRoute, authorizeRoles('admin', 'executive'), createFacility);
 router.post('/slots', protectRoute, authorizeRoles('admin', 'executive', 'captain'), createSportsSlot);
+router.put('/slots/:slotId', protectRoute, authorizeRoles('admin', 'executive', 'gym_admin', 'swim_admin'), updateSportsSlot);
 router.post('/blocks', protectRoute, authorizeRoles('admin', 'executive', 'captain'), createFacilityBlock);
 
 export default router;

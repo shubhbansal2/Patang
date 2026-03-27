@@ -184,11 +184,11 @@ const SlotBookingPage = () => {
     }
   };
 
-  const handleGymSubmit = async ({ facilityType, plan, medicalCert, paymentReceipt }) => {
+  const handleGymSubmit = async ({ facilityType, plan, slotId, medicalCert, paymentReceipt }) => {
     setGymSubmission({ submitting: true, success: '', error: '' });
 
     try {
-      await submitFacilityRegistration({ facilityType, plan, medicalCert, paymentReceipt });
+      await submitFacilityRegistration({ facilityType, plan, slotId, medicalCert, paymentReceipt });
       setGymSubmission({
         submitting: false,
         success: 'Your gym registration was submitted and the latest status has been loaded.',
@@ -204,11 +204,11 @@ const SlotBookingPage = () => {
     }
   };
 
-  const handleSwimmingSubmit = async ({ facilityType, plan, medicalCert, paymentReceipt }) => {
+  const handleSwimmingSubmit = async ({ facilityType, plan, slotId, medicalCert, paymentReceipt }) => {
     setSwimmingSubmission({ submitting: true, success: '', error: '' });
 
     try {
-      await submitFacilityRegistration({ facilityType, plan, medicalCert, paymentReceipt });
+      await submitFacilityRegistration({ facilityType, plan, slotId, medicalCert, paymentReceipt });
       setSwimmingSubmission({
         submitting: false,
         success: 'Your swimming registration was submitted and the latest status has been loaded.',

@@ -5,6 +5,8 @@ const getDefaultRoute = (user) => {
   const roles = user?.roles || [];
 
   if (roles.includes('executive') || roles.includes('admin')) return '/executive/dashboard';
+  if (roles.includes('gym_admin')) return '/gym-admin/dashboard';
+  if (roles.includes('swim_admin')) return '/swim-admin/dashboard';
   if (roles.includes('captain')) return '/captain/dashboard';
   if (roles.includes('coordinator')) return '/coordinator/events';
   if (roles.includes('caretaker')) return '/caretaker/sports';
@@ -19,7 +21,8 @@ const ProtectedRoute = ({ allowedRoles }) => {
   }
 
   if (allowedRoles && allowedRoles.length > 0) {
-    const hasRole = user.roles?.some(r => allowedRoles.includes(r));
+    const userRoles = user?.roles?.length ? user.roles : ['student'];
+    const hasRole = userRoles.some(r => allowedRoles.includes(r));
     if (!hasRole) {
       return <Navigate to={getDefaultRoute(user)} replace />;
     }
@@ -28,4 +31,5 @@ const ProtectedRoute = ({ allowedRoles }) => {
   return <Outlet />;
 };
 
+export { getDefaultRoute };
 export default ProtectedRoute;

@@ -179,3 +179,34 @@ export const logoutUser = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+export const updatePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword, confirmPassword } = req.body;
+
+        if (newPassword !== confirmPassword) {
+            return res.status(400).json({ message: "New passwords do not match" });
+        }
+
+        if (newPassword.length < 8) {
+            return res.status(400).json({ message: "New password must contain at least 8 characters" });
+        }
+
+        const user = await User.findById(req.user._id);
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        if (!(await user.matchPassword(currentPassword))) {
+            return res.status(401).json({ message: "Incorrect current password" });
+        }
+
+        user.password = newPassword;
+        await user.save();
+
+        res.status(200).json({ message: "Password updated successfully" });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};

@@ -19,8 +19,8 @@ import { getPendingVenues, reviewVenue } from '../controllers/executiveVenueCont
 
 const router = express.Router();
 
-// All executive routes require executive or admin role
-const execAuth = [protectRoute, authorizeRoles('executive', 'admin')];
+// All executive routes require executive, admin, gym_admin, or swim_admin role
+const execAuth = [protectRoute, authorizeRoles('executive', 'admin', 'gym_admin', 'swim_admin')];
 
 // ── Dashboard ────────────────────────────────────────────────────────────────
 router.get('/dashboard', ...execAuth, getDashboard);

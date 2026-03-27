@@ -66,6 +66,7 @@ const SubscriptionRegistrationView = ({
   const meta = facilityMeta[facilityType] || facilityMeta.Gym;
   const FacilityIcon = meta.icon;
   const [selectedPlanId, setSelectedPlanId] = useState('');
+  const [selectedSlotId, setSelectedSlotId] = useState('');
   const [medicalCert, setMedicalCert] = useState(null);
   const [paymentReceipt, setPaymentReceipt] = useState(null);
   const [validationError, setValidationError] = useState('');
@@ -79,7 +80,12 @@ const SubscriptionRegistrationView = ({
     if (!selectedPlanId && data?.plans?.length) {
       setSelectedPlanId(data.plans[0]._id || data.plans[0].planDuration || data.plans[0].name);
     }
-  }, [data, selectedPlanId]);
+
+    if (!selectedSlotId && data?.slots?.length) {
+      const available = data.slots.find(s => s.spotsLeft > 0);
+      if (available) setSelectedSlotId(available._id);
+    }
+  }, [data, selectedPlanId, selectedSlotId]);
 
   const selectedPlan = data?.plans?.find((plan) => (plan._id || plan.planDuration || plan.name) === selectedPlanId) || data?.plans?.[0] || null;
   const subscription = data?.currentSubscription || null;
@@ -95,8 +101,24 @@ const SubscriptionRegistrationView = ({
 
     if (isFormLocked) return;
 
+    // Mandatory profile fields
+    if (!data?.user?.name?.trim()) {
+      setValidationError('Your profile name is required. Please update your profile before applying.');
+      return;
+    }
+
+    if (!data?.user?.rollNumber?.trim()) {
+      setValidationError('Roll number is required. Please update your profile before applying.');
+      return;
+    }
+
     if (!selectedPlan) {
       setValidationError('Select a plan before submitting the registration.');
+      return;
+    }
+
+    if (!selectedSlotId) {
+      setValidationError('Select a time slot before submitting the registration.');
       return;
     }
 
@@ -113,6 +135,7 @@ const SubscriptionRegistrationView = ({
     onSubmit({
       facilityType,
       plan: selectedPlan,
+      slotId: selectedSlotId,
       medicalCert,
       paymentReceipt,
     });
@@ -184,16 +207,18 @@ const SubscriptionRegistrationView = ({
 
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Full name</label>
-                  <input value={data?.user?.name || ''} readOnly className={readOnlyFieldClassName} />
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Full name <span className="text-red-500">*</span></label>
+                  <input value={data?.user?.name || ''} readOnly className={`${readOnlyFieldClassName} ${!data?.user?.name?.trim() ? 'border-red-300 bg-red-50' : ''}`} />
+                  {!data?.user?.name?.trim() && <p className="mt-1 text-xs text-red-500">Name is required. Update your profile.</p>}
                 </div>
                 <div>
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Email</label>
                   <input value={data?.user?.email || ''} readOnly className={readOnlyFieldClassName} />
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Roll number</label>
-                  <input value={data?.user?.rollNumber || 'Not available'} readOnly className={readOnlyFieldClassName} />
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Roll number <span className="text-red-500">*</span></label>
+                  <input value={data?.user?.rollNumber || 'Not available'} readOnly className={`${readOnlyFieldClassName} ${!data?.user?.rollNumber?.trim() ? 'border-red-300 bg-red-50' : ''}`} />
+                  {!data?.user?.rollNumber?.trim() && <p className="mt-1 text-xs text-red-500">Roll number is required. Update your profile.</p>}
                 </div>
                 <div>
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Department</label>
@@ -276,6 +301,52 @@ const SubscriptionRegistrationView = ({
             <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="rounded-2xl bg-brand-50 p-3 text-brand-600">
+                  <FacilityIcon size={18} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-800">Select a time slot</h2>
+                  <p className="mt-1 text-sm text-gray-500">Choose your preferred monthly time slot. Capacity is strictly enforced.</p>
+                </div>
+              </div>
+
+              {data?.slots?.length ? (
+                <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {data.slots.map((slot) => {
+                    const isSelected = slot._id === selectedSlotId;
+                    const isFull = slot.spotsLeft <= 0;
+
+                    return (
+                      <button
+                        key={slot._id}
+                        type="button"
+                        disabled={isFormLocked || isFull}
+                        onClick={() => setSelectedSlotId(slot._id)}
+                        className={`rounded-2xl border p-4 text-left transition-all ${
+                          isSelected
+                            ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-200'
+                            : isFull 
+                            ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                            : 'border-gray-200 bg-gray-50 hover:border-brand-200 hover:bg-brand-50/70'
+                        } ${isFormLocked && !isFull ? 'cursor-not-allowed opacity-70' : ''}`}
+                      >
+                         <p className="text-sm font-bold text-gray-800">{slot.startTime} - {slot.endTime}</p>
+                         <p className={`mt-1 text-xs font-semibold ${isFull ? 'text-red-500' : 'text-brand-600'}`}>
+                           {isFull ? 'Slot Full' : `${slot.spotsLeft} spots left`}
+                         </p>
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="mt-5">
+                   <EmptyState title="No slots available" description="There are no configured time slots for this facility." />
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl bg-brand-50 p-3 text-brand-600">
                   <FileText size={18} />
                 </div>
                 <div>
@@ -291,7 +362,7 @@ const SubscriptionRegistrationView = ({
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 <div>
                   <label htmlFor="medicalCert" className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
-                    Medical certificate
+                    Medical certificate <span className="text-red-500">*</span>
                   </label>
                   <input
                     id="medicalCert"
@@ -306,7 +377,7 @@ const SubscriptionRegistrationView = ({
 
                 <div>
                   <label htmlFor="paymentReceipt" className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
-                    Payment receipt
+                    Payment receipt <span className="text-red-500">*</span>
                   </label>
                   <input
                     id="paymentReceipt"
@@ -350,6 +421,10 @@ const SubscriptionRegistrationView = ({
                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Valid until</p>
                     <p className="mt-2 text-sm font-semibold text-gray-800">{formatDate(subscription.endDate)}</p>
                   </div>
+                </div>
+                <div className="rounded-2xl border border-gray-100 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Time Slot</p>
+                  <p className="mt-2 text-sm font-semibold text-gray-800">{subscription.slotId ? `${subscription.slotId.startTime} - ${subscription.slotId.endTime}` : 'No slot assigned'}</p>
                 </div>
                 <div className="rounded-2xl border border-gray-100 p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Pass ID</p>

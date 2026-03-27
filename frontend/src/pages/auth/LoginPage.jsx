@@ -18,7 +18,10 @@ const LoginPage = () => {
     setError('');
     const result = await login(email.trim(), password.trim());
     if (result.success) {
-      navigate('/dashboard');
+      const stored = JSON.parse(localStorage.getItem('user') || '{}');
+      const roles = stored.roles || [];
+      const isAdmin = roles.some(r => ['executive', 'admin', 'gym_admin', 'swim_admin'].includes(r));
+      navigate(isAdmin ? '/executive/dashboard' : '/dashboard');
     } else {
       setError(result.message);
     }

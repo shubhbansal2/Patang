@@ -15,6 +15,19 @@ export const validateBooking = (req, res, next) => {
  */
 export const validateSubscriptionApply = (req, res, next) => {
     const { facilityType, plan } = req.body;
+
+    // User profile completeness checks
+    if (!req.user?.name?.trim()) {
+        return errorResponse(res, 400, 'VALIDATION_ERROR', 'Your profile name is required. Please update your profile before applying.');
+    }
+    if (!req.user?.profileDetails?.rollNumber?.trim()) {
+        return errorResponse(res, 400, 'VALIDATION_ERROR', 'Roll number is required. Please update your profile before applying.');
+    }
+
+    if (!req.body.slotId) {
+        return errorResponse(res, 400, 'VALIDATION_ERROR', 'slotId is required.');
+    }
+
     if (!facilityType || !['Gym', 'SwimmingPool'].includes(facilityType)) {
         return errorResponse(res, 400, 'VALIDATION_ERROR', 'facilityType must be Gym or SwimmingPool');
     }
