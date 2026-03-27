@@ -1,7 +1,9 @@
 import Event from '../models/Event.js';
 import Facility from '../models/Facility.js';
 import FacilityBlock from '../models/FacilityBlock.js';
+import User from '../models/User.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
+import { createNotification } from '../services/notificationService.js';
 
 // ── Available event categories & common organizing clubs ─────────────────────
 
@@ -151,6 +153,18 @@ export const submitEvent = async (req, res) => {
         }
 
         const event = await Event.create(eventData);
+
+        // Notify Executives
+        const executiveUsers = await User.find({ roles: 'executive' }).select('_id');
+        for (const exec of executiveUsers) {
+            await createNotification(exec._id, {
+                title: 'New Event Request',
+                message: `New event request "${event.title}" submitted by ${req.user.name}.`,
+                type: 'event_update',
+                relatedId: event._id,
+                link: '/executive/approvals'
+            });
+        }
 
         return successResponse(res, 201, {
             _id: event._id,
@@ -393,6 +407,18 @@ export const requestVenueBooking = async (req, res) => {
             requestedBy: req.user._id,
             notes: notes?.trim() || null
         });
+
+        // Notify Executives
+        const executiveUsers = await User.find({ roles: 'executive' }).select('_id');
+        for (const exec of executiveUsers) {
+            await createNotification(exec._id, {
+                title: 'New Venue Request',
+                message: `New booking request received for ${venue.name} on ${start.toLocaleString()} by ${req.user.name}.`,
+                type: 'venue_update',
+                relatedId: block._id,
+                link: '/executive/approvals'
+            });
+        }
 
         return successResponse(res, 201, {
             _id: block._id,

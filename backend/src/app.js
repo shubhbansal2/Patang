@@ -27,6 +27,7 @@ import feedbackRoutes from './routes/feedbackRoutes.js';
 import executiveRoutes from './routes/executiveRoutes.js';
 import captainRoutes from './routes/captainRoutes.js';
 import captainAdminRoutes from './routes/captainAdminRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
 
 // Cron jobs
 import groupExpiryJob from './jobs/groupExpiryJob.js';
@@ -69,6 +70,7 @@ app.use('/api/feedback', feedbackRoutes);
 app.use('/api/executive', executiveRoutes);
 app.use('/api/captain', captainRoutes);
 app.use('/api/executive/captain', captainAdminRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Start cron jobs
 groupExpiryJob.start();

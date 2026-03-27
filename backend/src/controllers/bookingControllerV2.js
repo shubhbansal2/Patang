@@ -7,6 +7,7 @@ import { isWithinNextDays, hoursUntil } from '../utils/dateUtils.js';
 import { checkUserSuspension, checkFairUseQuota, updateSlotStatus } from '../services/bookingService.js';
 import { createPenalty } from '../services/penaltyService.js';
 import { decodeBookingQR, generateBookingQR } from '../services/qrService.js';
+import { createNotification } from '../services/notificationService.js';
 import mongoose from 'mongoose';
 
 const ACTIVE_BOOKING_STATUSES = ['Confirmed', 'Provisioned', 'Attended'];
@@ -164,6 +165,16 @@ export const createBooking = async (req, res) => {
         // Generate QR token for check-in
         const qrToken = generateBookingQR(booking._id, userId);
 
+        if (bookingStatus === 'Confirmed') {
+            await createNotification(userId, {
+                title: 'Slot Confirmed',
+                message: `Your booking for ${facility.name} on ${new Date(slot.date).toLocaleDateString()} has been confirmed.`,
+                type: 'booking_confirmed',
+                relatedId: booking._id,
+                link: '/history'
+            });
+        }
+
         return successResponse(res, 201, {
             _id: booking._id,
             userId: booking.userId,
@@ -227,6 +238,18 @@ export const joinGroupBooking = async (req, res) => {
             booking.status = 'Confirmed';
             // Update slot status from Reserved to Booked
             await updateSlotStatus(booking.slotId, 'Reserved', 'Booked');
+            
+            // Notify creator and all members
+            const allUsers = [booking.userId, ...booking.joinedUsers];
+            for (const uid of allUsers) {
+                await createNotification(uid, {
+                    title: 'Group Slot Confirmed',
+                    message: `Your group booking is now confirmed as all required members have joined!`,
+                    type: 'booking_confirmed',
+                    relatedId: booking._id,
+                    link: '/history'
+                });
+            }
         }
 
         await booking.save();

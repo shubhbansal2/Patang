@@ -314,8 +314,13 @@ const CoordinatorVenuesPage = () => {
                       {req.reason.replace('_', ' ')}
                     </span>
                   </td>
-                  <td className="px-5 py-4">
+                  <td className="px-5 py-4 align-top">
                     <Badge status={req.status} />
+                    {req.notes && req.status !== 'pending' && (
+                      <p className={`text-[10px] mt-2 max-w-[150px] leading-tight font-medium ${req.status === 'rejected' ? 'text-red-500' : 'text-emerald-600'}`}>
+                        Note: {req.notes}
+                      </p>
+                    )}
                   </td>
                 </tr>
               )) : (

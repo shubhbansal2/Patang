@@ -13,6 +13,7 @@ import {
     normalizeSubscriptionType,
     parseSubscriptionScanPayload
 } from '../services/accessService.js';
+import { createNotification } from '../services/notificationService.js';
 
 const getIstMinutes = (date = new Date()) => {
     const formatter = new Intl.DateTimeFormat('en-GB', {
@@ -260,6 +261,16 @@ export const adminReview = async (req, res) => {
             subscription.reviewedAt = new Date();
             subscription.reviewComments = comments || null;
             await subscription.save();
+
+            const isGym = subscription.facilityType.toLowerCase() === 'gym';
+            const notifType = isGym ? 'gym_subscription_confirmed' : 'swimming_registration_confirmed';
+            await createNotification(subscription.userId, {
+                title: `${isGym ? 'Gym' : 'Swimming'} Subscription Approved`,
+                message: `Your ${subscription.facilityType} subscription for the ${subscription.plan} plan has been approved. Valid until ${endDate.toDateString()}.`,
+                type: notifType,
+                relatedId: subscription._id,
+                link: '/history'
+            });
 
             return successResponse(res, 200, {
                 status: 'Approved',

@@ -1,5 +1,7 @@
 import Feedback from '../models/Feedback.js';
+import User from '../models/User.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
+import { createNotification } from '../services/notificationService.js';
 
 // ── Recipient options for the dropdown ────────────────────────────────────────
 
@@ -132,6 +134,27 @@ export const submitFeedback = async (req, res) => {
             status: 'submitted'
         });
 
+        // Notify Sender
+        await createNotification(req.user._id, {
+            title: 'Feedback Sent',
+            message: `Your feedback "${subject.trim()}" has been sent to the ${targetRole}.`,
+            type: 'feedback_update',
+            relatedId: feedback._id,
+            link: '/feedback'
+        });
+
+        // Notify Staff
+        const staffUsers = await User.find({ roles: targetRole }).select('_id');
+        for (const staff of staffUsers) {
+            await createNotification(staff._id, {
+                title: 'New Feedback Received',
+                message: `New feedback received: "${subject.trim()}"`,
+                type: 'feedback_received',
+                relatedId: feedback._id,
+                link: '/executive/issues' // Default route for staff, or generic
+            });
+        }
+
         return successResponse(res, 201, {
             _id: feedback._id,
             targetRole: feedback.targetRole,
@@ -259,6 +282,31 @@ export const replyToFeedback = async (req, res) => {
         }
 
         await feedback.save();
+
+        // Notify User if status changed or admin replied
+        let title = 'Feedback Updated';
+        let action = 'updated';
+        if (status === 'resolved') {
+            title = 'Feedback Resolved';
+            action = 'resolved';
+        } else if (status === 'dismissed') {
+            title = 'Feedback Dismissed';
+            action = 'dismissed';
+        } else if (adminReply?.trim()) {
+            title = 'Feedback Replied';
+            action = 'replied to';
+        } else if (status === 'acknowledged') {
+            title = 'Feedback Acknowledged';
+            action = 'acknowledged';
+        }
+
+        await createNotification(feedback.user, {
+            title: title,
+            message: `Your feedback "${feedback.subject}" has been ${action}.`,
+            type: 'feedback_update',
+            relatedId: feedback._id,
+            link: '/feedback'
+        });
 
         return successResponse(res, 200, {
             _id: feedback._id,

@@ -2,6 +2,7 @@ import FacilityBlock from '../models/FacilityBlock.js';
 import Facility from '../models/Facility.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
 import { logAction } from '../services/auditService.js';
+import { createNotification } from '../services/notificationService.js';
 
 /**
  * GET /api/executive/venues/pending
@@ -100,6 +101,15 @@ export const reviewVenue = async (req, res) => {
         );
 
         const message = action === 'approve' ? 'Venue booking approved' : 'Venue booking rejected';
+
+        // Notify Coordinator
+        await createNotification(block.requestedBy, {
+            title: `Venue Request ${action === 'approve' ? 'Approved' : 'Rejected'}`,
+            message: `Your booking request for ${block.facility?.name} on ${new Date(block.startTime).toLocaleString()} has been ${newStatus}.${reason ? ` Reason: ${reason}` : ''}`,
+            type: 'venue_update',
+            relatedId: updated._id,
+            link: '/coordinator/venues'
+        });
 
         return successResponse(res, 200, {
             blockId: updated._id,

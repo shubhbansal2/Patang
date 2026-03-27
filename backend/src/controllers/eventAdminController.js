@@ -1,5 +1,6 @@
 import Event from '../models/Event.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
+import { createNotification } from '../services/notificationService.js';
 
 /**
  * GET /api/v2/admin/events/pending
@@ -62,6 +63,19 @@ export const reviewEvent = async (req, res) => {
         const message = action === 'approve' ? 'Event approved'
             : action === 'reject' ? 'Event rejected'
             : 'Changes requested for event';
+
+        let notifMessage = '';
+        if (action === 'approve') notifMessage = `Your event "${event.title}" has been approved!`;
+        if (action === 'reject') notifMessage = `Your event "${event.title}" has been rejected. Reason: ${rejectionReason}`;
+        if (action === 'requestChanges') notifMessage = `Changes requested for your event "${event.title}". Note: ${changeRequestNote}`;
+
+        await createNotification(event.createdBy, {
+            title: `Event ${event.status}`,
+            message: notifMessage,
+            type: 'event_update',
+            relatedId: event._id,
+            link: '/coordinator/events'
+        });
 
         return successResponse(res, 200, {
             status: event.status,

@@ -1,5 +1,6 @@
 import Penalty from '../models/Penalty.js';
 import { addDays } from '../utils/dateUtils.js';
+import { createNotification } from './notificationService.js';
 
 const NO_SHOW_THRESHOLD = 3;
 const LATE_CANCEL_THRESHOLD = 2;
@@ -15,6 +16,14 @@ export const createPenalty = async (userId, type, bookingId, description = null)
         type,
         bookingId,
         description
+    });
+
+    await createNotification(userId, {
+        title: 'Penalty Applied',
+        message: `A ${type} penalty has been applied to your account.`,
+        type: 'penalty',
+        relatedId: penalty._id,
+        link: '/profile' // Assuming penalty details can be seen here
     });
 
     // Check if suspension threshold is met
@@ -53,13 +62,22 @@ export const checkAndApplySuspension = async (userId) => {
 
         if (!existingSuspension) {
             const suspendedUntil = addDays(new Date(), SUSPENSION_DAYS);
-            await Penalty.create({
+            const newSuspension = await Penalty.create({
                 userId,
                 type: 'Misuse',
                 isActive: true,
                 suspendedUntil,
                 description: `Auto-suspension: ${noShowCount} no-shows, ${lateCancelCount} late cancellations in ${PENALTY_WINDOW_DAYS} days`
             });
+
+            await createNotification(userId, {
+                title: 'Account Suspended',
+                message: `Your account has been suspended until ${suspendedUntil.toLocaleDateString()}. Reason: ${noShowCount} no-shows, ${lateCancelCount} late cancellations.`,
+                type: 'penalty',
+                relatedId: newSuspension._id,
+                link: '/profile'
+            });
+
             return { suspended: true, suspendedUntil };
         }
     }

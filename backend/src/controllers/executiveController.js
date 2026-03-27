@@ -13,6 +13,7 @@ import { logAction } from '../services/auditService.js';
 import { getFacilityOccupancySummary } from '../services/accessService.js';
 import { getOverviewStats, getBookingTrends, getSubscriptionTrends } from '../services/analyticsService.js';
 import { startOfDay, endOfDay } from '../utils/dateUtils.js';
+import { createNotification } from '../services/notificationService.js';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // 1. DASHBOARD
@@ -370,6 +371,13 @@ export const updateUserRoles = async (req, res) => {
             { role, previousRoles: action === 'add' ? user.roles.filter(r => r !== role) : [...user.roles, role] }
         );
 
+        await createNotification(userId, {
+            title: 'Role Updated',
+            message: `Your role has been updated. The "${role}" role was ${action === 'add' ? 'added to' : 'removed from'} your account.`,
+            type: 'role_update',
+            link: '/settings'
+        });
+
         return successResponse(res, 200, {
             userId: user._id,
             roles: user.roles,
@@ -471,6 +479,14 @@ export const updatePenalty = async (req, res) => {
             penaltyType: penalty.type,
             userId: penalty.userId,
             reason
+        });
+
+        await createNotification(penalty.userId, {
+            title: 'Penalty Cleared',
+            message: `Your penalty (${penalty.type}) has been cleared by the executive team. Reason: ${reason}`,
+            type: 'penalty',
+            relatedId: penalty._id,
+            link: '/dashboard'
         });
 
         return successResponse(res, 200, {

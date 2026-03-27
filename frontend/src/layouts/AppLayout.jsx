@@ -30,8 +30,10 @@ import {
   BookOpen,
   Building,
   CalendarPlus,
-  ClipboardCheck
+  ClipboardCheck,
+  CheckCircle2
 } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
 /* ──────────────────────────────────────────────────────────────────────
    Navigation item definitions (per-role)
@@ -256,8 +258,52 @@ const Topbar = ({ onMenuToggle }) => {
   const [showNotif, setShowNotif] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
   const [dashboardName, setDashboardName] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const isFacilityAdmin = user?.roles?.some(r => ['gym_admin', 'swim_admin'].includes(r));
+
+  // Fetch notifications
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const { data } = await api.get('/notifications');
+        const notifs = data.data.notifications || [];
+        setNotifications(notifs);
+        setUnreadCount(notifs.filter(n => !n.isRead).length);
+        if (notifs.some(n => !n.isRead)) {
+          setHasUnread(true);
+        }
+      } catch (err) {
+        console.error('Failed to fetch notifications', err);
+      }
+    };
+    if (user?._id) {
+        fetchNotifications();
+    }
+  }, [user?._id]);
+
+  const markAsRead = async (id) => {
+    try {
+      await api.patch(`/notifications/${id}/read`);
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      if (unreadCount <= 1) setHasUnread(false);
+    } catch (err) {
+      console.error('Failed to mark notification as read', err);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      await api.patch('/notifications/read-all');
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+      setHasUnread(false);
+    } catch (err) {
+      console.error('Failed to mark all notifications as read', err);
+    }
+  };
 
   // Apply dark mode on mount and toggle
   useEffect(() => {
@@ -283,7 +329,10 @@ const Topbar = ({ onMenuToggle }) => {
         }
         const hasPenalties = d.penalties?.totalActiveCount > 0;
         const hasNewEvents = d.upcomingEvents?.length > 0;
-        setHasUnread(hasPenalties || hasNewEvents);
+        // Merge dashboard-based unread concept with our notification system
+        if (hasPenalties || hasNewEvents) {
+          setHasUnread(true);
+        }
       } catch {
         // Silently fail
       }
@@ -355,21 +404,64 @@ const Topbar = ({ onMenuToggle }) => {
             className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-full hover:bg-gray-100 relative"
           >
             <Bell size={20} />
-            {hasUnread && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 border border-white"></span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border border-white">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
             )}
           </button>
 
           {showNotif && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowNotif(false)} />
-              <div className="absolute right-0 top-12 z-50 w-72 bg-white rounded-xl shadow-xl border border-gray-100 py-3">
-                <div className="px-4 pb-2 border-b border-gray-50">
-                  <p className="text-sm font-semibold text-gray-800">Notifications</p>
+              <div className="absolute right-0 top-12 z-50 w-80 bg-white rounded-xl shadow-xl border border-gray-100 py-3">
+                <div className="px-4 pb-2 border-b border-gray-50 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-800">
+                    Notifications {unreadCount > 0 && <span className="ml-1 bg-brand-100 text-brand-600 text-xs px-2 py-0.5 rounded-full">{unreadCount}</span>}
+                  </p>
+                  {unreadCount > 0 && (
+                    <button onClick={markAllAsRead} className="text-xs text-brand-500 hover:text-brand-600 flex items-center gap-1">
+                      <CheckCircle2 size={14} /> Mark all read
+                    </button>
+                  )}
                 </div>
-                <div className="px-4 py-6 text-center">
-                  <Bell size={24} className="text-gray-300 mx-auto mb-2" />
-                  <p className="text-xs text-gray-400">No new notifications</p>
+                
+                <div className="max-h-80 overflow-y-auto w-full">
+                  {notifications.length === 0 ? (
+                    <div className="px-4 py-6 text-center">
+                      <Bell size={24} className="text-gray-300 mx-auto mb-2" />
+                      <p className="text-xs text-gray-400">No new notifications</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col">
+                      {notifications.map(n => (
+                        <div 
+                          key={n._id} 
+                          className={`p-3 border-b border-gray-50 flex gap-3 hover:bg-gray-50 transition-colors ${!n.isRead ? 'bg-brand-50/30' : ''}`}
+                          onClick={() => {
+                            if (!n.isRead) markAsRead(n._id);
+                            if (n.link) {
+                                navigate(n.link);
+                                setShowNotif(false);
+                            }
+                          }}
+                        >
+                          <div className={`mt-1 shrink-0 w-2 h-2 rounded-full ${!n.isRead ? 'bg-brand-500' : 'bg-transparent'}`} />
+                          <div className="flex-1 min-w-0 cursor-pointer">
+                            <p className={`text-sm ${!n.isRead ? 'font-semibold text-gray-900' : 'font-medium text-gray-800'}`}>
+                              {n.title}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-0.5 whitespace-normal break-words leading-snug">
+                              {n.message}
+                            </p>
+                            <p className="text-[10px] text-gray-400 mt-1">
+                              {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </>

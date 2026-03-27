@@ -259,6 +259,11 @@ const CoordinatorEventsPage = () => {
                         Reason: {event.rejectionReason}
                       </p>
                     )}
+                    {event.changeRequestNote && (
+                      <p className="text-[10px] text-amber-500 mt-2 max-w-[150px] leading-tight font-medium">
+                        Changes requested: {event.changeRequestNote}
+                      </p>
+                    )}
                   </td>
                 </tr>
               )) : (
