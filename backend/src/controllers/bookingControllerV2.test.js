@@ -15,6 +15,7 @@ const {
   createPenaltyMock,
   decodeBookingQRMock,
   generateBookingQRMock,
+  createNotificationMock,
 } = vi.hoisted(() => ({
   bookingCreateMock: vi.fn(),
   bookingFindOneMock: vi.fn(),
@@ -29,6 +30,7 @@ const {
   createPenaltyMock: vi.fn(),
   decodeBookingQRMock: vi.fn(),
   generateBookingQRMock: vi.fn(() => 'qr-token'),
+  createNotificationMock: vi.fn(),
 }));
 
 vi.mock('../models/Booking.js', () => ({
@@ -71,6 +73,10 @@ vi.mock('../services/penaltyService.js', () => ({
 vi.mock('../services/qrService.js', () => ({
   decodeBookingQR: decodeBookingQRMock,
   generateBookingQR: generateBookingQRMock,
+}));
+
+vi.mock('../services/notificationService.js', () => ({
+  createNotification: createNotificationMock,
 }));
 
 vi.mock('mongoose', () => ({

@@ -20,6 +20,7 @@ const {
   getScopedSubscriptionTypesMock,
   normalizeSubscriptionTypeMock,
   parseSubscriptionScanPayloadMock,
+  createNotificationMock,
 } = vi.hoisted(() => ({
   facilityFindOneMock: vi.fn(),
   sportsSlotFindMock: vi.fn(),
@@ -39,6 +40,7 @@ const {
   getScopedSubscriptionTypesMock: vi.fn(),
   normalizeSubscriptionTypeMock: vi.fn((value) => value),
   parseSubscriptionScanPayloadMock: vi.fn(),
+  createNotificationMock: vi.fn(),
 }));
 
 vi.mock('../models/SubscriptionV2.js', () => ({
@@ -81,6 +83,10 @@ vi.mock('../services/accessService.js', () => ({
   getScopedSubscriptionTypes: getScopedSubscriptionTypesMock,
   normalizeSubscriptionType: normalizeSubscriptionTypeMock,
   parseSubscriptionScanPayload: parseSubscriptionScanPayloadMock,
+}));
+
+vi.mock('../services/notificationService.js', () => ({
+  createNotification: createNotificationMock,
 }));
 
 import {
@@ -151,6 +157,40 @@ describe('subscriptionControllerV2', () => {
 
     expect(res.statusCode).toBe(409);
     expect(res.body.error.code).toBe('ACTIVE_SUBSCRIPTION_EXISTS');
+  });
+
+  it('rejects invalid subscription document types', async () => {
+    const req = {
+      params: { subscriptionId: 'sub-1', documentType: 'aadhaar' },
+      user: { _id: 'user-1', roles: ['student'] },
+    };
+    const res = createMockRes();
+
+    await getSubscriptionDocument(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('forbids unrelated users from viewing protected subscription documents', async () => {
+    subscriptionFindByIdMock.mockResolvedValueOnce({
+      _id: 'sub-1',
+      userId: 'owner-1',
+      facilityType: 'Gym',
+      medicalCertFileId: 'medical-file-id',
+    });
+    getScopedSubscriptionTypesMock.mockReturnValueOnce([]);
+
+    const req = {
+      params: { subscriptionId: 'sub-1', documentType: 'medicalCert' },
+      user: { _id: 'other-user', roles: ['student'] },
+    };
+    const res = createMockRes();
+
+    await getSubscriptionDocument(req, res);
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.error.code).toBe('FORBIDDEN');
   });
 
   it('approves a pending subscription and issues pass metadata', async () => {

@@ -142,7 +142,9 @@ const SwimAdminDashboardPage = () => {
         const resData = res.data?.data || {};
         
         // Filter out non-swimming requests
-        const swimReqs = (resData.subscriptions || []).filter(r => r.facilityType?.toLowerCase() === 'swimming');
+        const swimReqs = (resData.subscriptions || []).filter(
+          (r) => r.facilityType?.toLowerCase().includes('swimming')
+        );
         
         setData({
           requests: swimReqs.slice(0, 5), // show top 5

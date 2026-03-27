@@ -116,6 +116,30 @@ describe('bookingController', () => {
     expect(res.body.message).toBe('Not enough capacity left for that many players');
   });
 
+  it('rejects booking updates from a different non-admin user', async () => {
+    sportsBookingFindByIdMock.mockReturnValueOnce(createChain({
+      _id: 'booking-1',
+      user: 'owner-1',
+      status: 'confirmed',
+      participantCount: 1,
+      slot: { _id: 'slot-1', capacity: 4, minPlayersRequired: 1 },
+      facility: { capacity: 4 },
+      save: vi.fn(),
+    }));
+
+    const req = {
+      params: { id: 'booking-1' },
+      body: { participantCount: 2 },
+      user: { _id: 'other-user', roles: ['student'] },
+    };
+    const res = createMockRes();
+
+    await updateBooking(req, res);
+
+    expect(res.statusCode).toBe(403);
+    expect(res.body.message).toBe('You are not allowed to modify this booking');
+  });
+
   it('returns participant-aware remaining capacity for slot availability checks', async () => {
     sportsSlotFindByIdMock.mockReturnValueOnce(createChain({
       _id: 'slot-1',
@@ -176,6 +200,19 @@ describe('bookingController', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body.isBlocked).toBe(true);
     expect(res.body.blockReason).toBe('Maintenance');
+  });
+
+  it('requires slotId and bookingDate for availability checks', async () => {
+    const req = {
+      query: { slotId: 'slot-1' },
+      user: { _id: 'user-1' },
+    };
+    const res = createMockRes();
+
+    await checkAvailability(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toBe('slotId and bookingDate are required');
   });
 
   it('lists caretaker bookings scoped to assigned facilities', async () => {
@@ -247,5 +284,23 @@ describe('bookingController', () => {
         participantCount: 2,
       })
     );
+  });
+
+  it('returns an invalid verification payload when caretaker identifier does not match a user', async () => {
+    userFindOneMock.mockReturnValueOnce(createChain(null));
+
+    const req = {
+      body: { identifier: 'missing-roll', bookingId: 'booking-1' },
+      user: { roles: ['caretaker'], profileDetails: { assignedFacilities: ['facility-1'] } },
+    };
+    const res = createMockRes();
+
+    await verifyAttendeeForCaretaker(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({
+      valid: false,
+      reason: 'No user found for the provided identifier',
+    });
   });
 });
