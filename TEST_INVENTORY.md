@@ -6,11 +6,12 @@ This file documents what every current automated test file covers across the bac
 
 ### `/Users/aarya/repo_main/backend/src/controllers/authController.test.js`
 - Valid login for a verified user.
-- Invalid credential rejection.
-- Registration success path.
-- Registration duplicate or invalid-flow handling.
+- Rejection of registration for non-IITK email domains.
+- Registration success path, including the current activation-email subject and success message.
+- OTP verification flow with token issuance.
+- Login rejection when an account is not yet verified.
 - Forgot-password initiation behavior.
-- Reset and verification-related auth outcomes.
+- Password reset with a valid OTP and expiry window.
 
 ### `/Users/aarya/repo_main/backend/src/controllers/bookingController.test.js`
 - Updating a sports booking with a new participant count.
@@ -18,6 +19,8 @@ This file documents what every current automated test file covers across the bac
 - Rejecting booking modification by a different non-admin user.
 - Slot availability calculations using participant-aware occupancy.
 - Facility-block overlap handling for slot availability.
+- Captain practice-block overlap handling for slot availability.
+- Rejecting booking creation when a captain-reserved slot is already blocked.
 - Validation when `slotId` or `bookingDate` is missing.
 - Caretaker booking list scoped to assigned facilities.
 - Caretaker attendee verification success path.
@@ -30,6 +33,10 @@ This file documents what every current automated test file covers across the bac
 - Late cancellation penalty behavior.
 - QR check-in success inside the valid booking window.
 
+### `/Users/aarya/repo_main/backend/src/controllers/captainController.test.js`
+- Same-sport captain practice blocks are auto-approved immediately.
+- Cross-sport captain practice block requests remain pending for executive review.
+
 ### `/Users/aarya/repo_main/backend/src/controllers/dashboardController.test.js`
 - Unauthorized dashboard access.
 - Successful dashboard aggregation payload for an authenticated user.
@@ -37,6 +44,7 @@ This file documents what every current automated test file covers across the bac
 ### `/Users/aarya/repo_main/backend/src/controllers/slotBookingController.test.js`
 - Fallback from stale or past requested dates to the current valid IST bookable date.
 - Inclusion of active upcoming sports bookings in the booking activity feed.
+- Slot rendering as `Team Practice` when an approved captain block overlaps the selected date and time.
 
 ### `/Users/aarya/repo_main/backend/src/controllers/subscriptionControllerV2.test.js`
 - Successful subscription application creation.
@@ -45,9 +53,15 @@ This file documents what every current automated test file covers across the bac
 - Forbidden access to another user's protected subscription documents.
 - Admin approval flow with pass generation and QR issuance.
 - Entry verification when the next action is inferred from the latest access log.
-- Entry verification rejection when the pass is outside facility operating hours.
+- Entry verification rejection when the pass is outside facility operating hours or the allowed scan window.
 - Occupancy summary fetch behavior.
 - Scoped admin restrictions and related invalid paths around document or review access.
+
+### `/Users/aarya/repo_main/backend/src/routes/captainRoutes.integration.test.js`
+- Unauthenticated rejection on captain block creation routes.
+- Same-sport captain block creation through the real route stack with immediate approval.
+- Cross-sport captain block creation through the real route stack with pending status.
+- Captain block listing through the real route stack.
 
 ### `/Users/aarya/repo_main/backend/src/routes/subscriptionAdminRoutes.integration.test.js`
 - Route-level authorization for admin subscription review endpoints.
@@ -84,16 +98,17 @@ This file documents what every current automated test file covers across the bac
 ### `/Users/aarya/repo_main/frontend/src/pages/caretaker/SportsCaretakerPage.test.jsx`
 - Rendering caretaker booking data for sports attendance verification.
 - Caretaker attendance actions and booking verification UI behavior.
+- Rendering captain-reserved practice blocks without attendance actions.
 
 ### `/Users/aarya/repo_main/frontend/src/pages/gym-admin/GymAdminDashboardPage.test.jsx`
 - Rendering pending gym requests.
-- Rendering live occupancy from backend field names `occupiedSlots` and `totalSlots`.
-- Rendering slot-level occupancy information.
+- Rendering the updated dashboard heading and pending-request list.
+- Rendering slot-level occupancy information from backend `slotOccupancy`, including the current occupied count and capacity for a configured slot.
 - Empty-state handling when there are no pending requests.
 
 ### `/Users/aarya/repo_main/frontend/src/pages/slot-booking/GymRegistrationView.test.jsx`
 - Required-file validation for gym registration.
-- Successful gym registration submission with uploaded documents.
+- Successful gym registration submission with uploaded documents and the currently selected `slotId`.
 - Locked-state behavior when an existing subscription already exists.
 
 ### `/Users/aarya/repo_main/frontend/src/pages/slot-booking/SportsBookingView.test.jsx`
@@ -106,7 +121,7 @@ This file documents what every current automated test file covers across the bac
 
 ### `/Users/aarya/repo_main/frontend/src/pages/slot-booking/SwimmingRegistrationView.test.jsx`
 - Swimming registration page copy and occupancy snapshot rendering.
-- Successful swimming registration submission with uploaded documents.
+- Successful swimming registration submission with uploaded documents and the currently selected `slotId`.
 
 ### `/Users/aarya/repo_main/frontend/src/pages/slot-booking/api.test.js`
 - Slot-booking API response unwrapping.
@@ -124,7 +139,7 @@ This file documents what every current automated test file covers across the bac
 
 ### `/Users/aarya/repo_main/frontend/src/pages/swim-admin/SwimAdminDashboardPage.test.jsx`
 - Rendering swimming requests with correct facility filtering.
-- Rendering live occupancy from backend field names.
+- Rendering slot-level live occupancy for swimming from backend `slotOccupancy`, including the current occupied count and capacity for a configured slot.
 - Error-state rendering when dashboard loading fails.
 
 ### `/Users/aarya/repo_main/frontend/src/services/api.test.js`
@@ -132,6 +147,6 @@ This file documents what every current automated test file covers across the bac
 
 ## Current Totals
 
-- Backend: 10 test files, 48 passing tests.
-- Frontend: 10 test files, 32 passing tests.
-- Overall: 20 test files, 80 passing tests.
+- Backend: 12 test files, 57 authored tests.
+- Frontend: 10 test files, 33 authored tests.
+- Overall: 22 test files, 90 authored tests.

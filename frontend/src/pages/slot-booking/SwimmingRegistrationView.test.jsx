@@ -21,6 +21,9 @@ const baseData = {
     available: 56,
     status: 'Available',
   },
+  slots: [
+    { _id: 'slot-1', startTime: '06:00', endTime: '07:00', capacity: 30, activeCount: 5 },
+  ],
   paymentInstructions: 'Pay swimming fees through SBI Collect.',
   quickRules: ['Swimming cap is mandatory.'],
 };
@@ -62,6 +65,7 @@ describe('SwimmingRegistrationView', () => {
     expect(props.onSubmit).toHaveBeenCalledWith({
       facilityType: 'SwimmingPool',
       plan: expect.objectContaining({ _id: 'plan-yearly', name: 'Yearly Pool Plan' }),
+      slotId: 'slot-1',
       medicalCert,
       paymentReceipt,
     });

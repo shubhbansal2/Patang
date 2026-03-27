@@ -21,6 +21,9 @@ const baseData = {
     available: 60,
     status: 'Available',
   },
+  slots: [
+    { _id: 'slot-1', startTime: '06:00', endTime: '07:00', capacity: 30, activeCount: 10 },
+  ],
   paymentInstructions: 'Pay through SBI Collect.',
   quickRules: ['Carry your ID card.'],
 };
@@ -65,6 +68,7 @@ describe('GymRegistrationView', () => {
     expect(props.onSubmit).toHaveBeenCalledWith({
       facilityType: 'Gym',
       plan: expect.objectContaining({ _id: 'plan-semester', name: 'Semesterly' }),
+      slotId: 'slot-1',
       medicalCert,
       paymentReceipt,
     });

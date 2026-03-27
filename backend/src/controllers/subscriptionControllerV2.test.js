@@ -97,6 +97,16 @@ import {
   verifyEntry,
 } from './subscriptionControllerV2.js';
 
+const createPopulateChain = (value) => {
+  const chain = {
+    populate: vi.fn(() => chain),
+    then: (resolve, reject) => Promise.resolve(value).then(resolve, reject),
+    catch: (reject) => Promise.resolve(value).catch(reject),
+  };
+
+  return chain;
+};
+
 describe('subscriptionControllerV2', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -236,7 +246,7 @@ describe('subscriptionControllerV2', () => {
         startDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
         endDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
       };
-    subscriptionFindOneMock.mockReturnValueOnce({ populate: vi.fn().mockResolvedValue(populatedSubscription) });
+    subscriptionFindOneMock.mockReturnValueOnce(createPopulateChain(populatedSubscription));
     getScopedSubscriptionTypesMock.mockReturnValueOnce(['Gym']);
     facilityFindOneMock.mockReturnValueOnce({
       select: vi.fn().mockResolvedValue({ _id: 'facility-1' }),
@@ -280,7 +290,10 @@ describe('subscriptionControllerV2', () => {
         startDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
         endDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
       };
-    subscriptionFindOneMock.mockReturnValueOnce({ populate: vi.fn().mockResolvedValue(populatedSubscription) });
+    subscriptionFindOneMock.mockReturnValueOnce(createPopulateChain({
+      ...populatedSubscription,
+      slotId: { startTime: '23:58', endTime: '23:59' },
+    }));
     getScopedSubscriptionTypesMock.mockReturnValueOnce(['Gym']);
     facilityFindOneMock.mockReturnValueOnce({
       select: vi.fn().mockResolvedValue({ _id: 'facility-1' }),

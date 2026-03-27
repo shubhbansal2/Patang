@@ -55,7 +55,7 @@ describe('authController', () => {
     await registerUser(req, res);
 
     expect(res.statusCode).toBe(400);
-    expect(res.body).toEqual({ message: 'Invalid domain. Institute email required.' });
+    expect(res.body).toEqual({ message: 'Invalid domain. Institute email (@iitk.ac.in) required.' });
     expect(userFindOneMock).not.toHaveBeenCalled();
   });
 
@@ -89,14 +89,14 @@ describe('authController', () => {
     expect(sendEmailMock).toHaveBeenCalledWith(
       expect.objectContaining({
         email: 'aarya@iitk.ac.in',
-        subject: 'Verify your account',
+        subject: 'Verify Your P.A.T.A.N.G Account',
       })
     );
     expect(res.statusCode).toBe(201);
     expect(res.body).toEqual({
       _id: 'user-1',
       email: 'aarya@iitk.ac.in',
-      message: 'Activation code sent successfully',
+      message: 'Activation code sent to aarya@iitk.ac.in successfully',
     });
   });
 

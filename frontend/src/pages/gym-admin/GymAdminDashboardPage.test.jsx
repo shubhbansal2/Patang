@@ -62,11 +62,11 @@ describe('GymAdminDashboardPage', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText(/gym overview/i)).toBeInTheDocument();
-    expect(screen.getByText('12 / 30')).toBeInTheDocument();
+    expect(await screen.findByText(/recent pending requests/i)).toBeInTheDocument();
     expect(screen.getByText(/patang student/i)).toBeInTheDocument();
     expect(await screen.findByText((content) => content.includes('06:00') && content.includes('07:00'))).toBeInTheDocument();
     expect(screen.getByText('8')).toBeInTheDocument();
+    expect(screen.getByText('30')).toBeInTheDocument();
   });
 
   it('shows an empty-state message when there are no pending requests', async () => {

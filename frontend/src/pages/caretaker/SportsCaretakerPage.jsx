@@ -263,78 +263,114 @@ const SportsCaretakerPage = () => {
 
                   return (
                   <article key={booking._id} className="rounded-3xl border border-gray-100 bg-gray-50/60 p-5">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="space-y-3">
+                    {isPracticeBlock ? (
+                      <div className="space-y-4">
                         <div className="flex flex-wrap items-center gap-3">
                           <h3 className="text-lg font-bold text-gray-800">{booking.facility?.name || 'Facility booking'}</h3>
                           <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${statusTone[booking.status] || 'bg-gray-50 border-gray-200 text-gray-700'}`}>
-                            {isPracticeBlock ? 'team practice' : booking.status}
+                            team practice
                           </span>
                         </div>
                         <p className="text-sm text-gray-500">
                           {booking.facility?.sportType || 'Sport'} • {booking.facility?.location || 'Sports Complex'}
                         </p>
-                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                          <div className="rounded-2xl border border-gray-100 bg-white p-4">
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">{isPracticeBlock ? 'Captain' : 'Attendee'}</p>
-                            <p className="mt-2 text-sm font-semibold text-gray-800">{booking.bookedBy?.email || '—'}</p>
-                            <p className="mt-1 text-xs text-gray-500">{booking.bookedBy?.name || 'Unknown'}</p>
+
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Captain</p>
+                              <p className="mt-2 break-words text-sm font-semibold text-gray-800">{booking.bookedBy?.email || '—'}</p>
+                              <p className="mt-1 text-xs text-gray-500">{booking.bookedBy?.name || 'Unknown'}</p>
+                            </div>
+                            <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Reserved for</p>
+                              <p className="mt-2 text-sm font-semibold text-gray-800">{booking.sport || booking.facility?.sportType || 'Sports'} team session</p>
+                              <p className="mt-1 text-xs text-gray-500">{booking.bookedBy?.profileDetails?.department || 'Reserved for the team session'}</p>
+                            </div>
+                            <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Slot time</p>
+                              <p className="mt-2 text-sm font-semibold text-gray-800">{formatDate(booking.slotStartAt)}</p>
+                              <p className="mt-1 text-xs text-gray-500">{formatTime(booking.slotStartAt)} - {formatTime(booking.slotEndAt)}</p>
+                            </div>
+                            <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Availability effect</p>
+                              <p className="mt-2 text-sm font-semibold text-gray-800">Blocks this slot for all users</p>
+                              <p className="mt-1 text-xs text-gray-500">Regular bookings are disabled for this court and time.</p>
+                            </div>
                           </div>
-                          <div className="rounded-2xl border border-gray-100 bg-white p-4">
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
-                              {isPracticeBlock ? 'Team booking' : booking.bookedBy?.roles?.includes('faculty') ? 'Role' : 'Roll number'}
+
+                          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                            <p className="font-semibold text-slate-800">Caretaker note</p>
+                            <p className="mt-2 leading-6">
+                              Captain-reserved slot. Keep the court supervised for the team session. Attendance actions are disabled here because this is a block, not a student booking.
                             </p>
-                            <p className="mt-2 text-sm font-semibold text-gray-800">
-                              {isPracticeBlock
-                                ? `${booking.sport || booking.facility?.sportType || 'Sports'} captain block`
-                                : booking.bookedBy?.roles?.includes('faculty')
-                                  ? 'Faculty'
-                                  : (booking.bookedBy?.profileDetails?.rollNumber || '—')}
-                            </p>
-                            <p className="mt-1 text-xs text-gray-500">{booking.bookedBy?.profileDetails?.department || (isPracticeBlock ? 'Reserved for the team session' : 'Department unavailable')}</p>
-                          </div>
-                          <div className="rounded-2xl border border-gray-100 bg-white p-4">
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Slot time</p>
-                            <p className="mt-2 text-sm font-semibold text-gray-800">{formatDate(booking.slotStartAt)}</p>
-                            <p className="mt-1 text-xs text-gray-500">{formatTime(booking.slotStartAt)} - {formatTime(booking.slotEndAt)}</p>
-                          </div>
-                          <div className="rounded-2xl border border-gray-100 bg-white p-4">
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">{isPracticeBlock ? 'Availability effect' : 'Group details'}</p>
-                            <p className="mt-2 text-sm font-semibold text-gray-800">{isPracticeBlock ? 'Blocks this slot for all users' : `${booking.participantCount || 1} participant(s)`}</p>
-                            <p className="mt-1 text-xs text-gray-500">{isPracticeBlock ? 'Caretaker can monitor but not mark attendance here.' : booking.isGroupBooking ? 'Group booking' : 'Individual booking'}</p>
                           </div>
                         </div>
                       </div>
-
-                      <div className="flex flex-col gap-3 lg:min-w-[220px]">
-                        {isPracticeBlock ? (
-                          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                            Captain-reserved slot. This block is visible for supervision and keeps the facility unavailable to regular users.
+                    ) : (
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="space-y-3">
+                          <div className="flex flex-wrap items-center gap-3">
+                            <h3 className="text-lg font-bold text-gray-800">{booking.facility?.name || 'Facility booking'}</h3>
+                            <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${statusTone[booking.status] || 'bg-gray-50 border-gray-200 text-gray-700'}`}>
+                              {booking.status}
+                            </span>
                           </div>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleAttendance(booking, 'present')}
-                              disabled={actionBookingId === booking._id}
-                              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {actionBookingId === booking._id ? <LoaderCircle size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
-                              Mark present
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleAttendance(booking, 'absent')}
-                              disabled={actionBookingId === booking._id}
-                              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {actionBookingId === booking._id ? <LoaderCircle size={16} className="animate-spin" /> : <XCircle size={16} />}
-                              Mark absent
-                            </button>
-                          </>
-                        )}
+                          <p className="text-sm text-gray-500">
+                            {booking.facility?.sportType || 'Sport'} • {booking.facility?.location || 'Sports Complex'}
+                          </p>
+                          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                            <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Attendee</p>
+                              <p className="mt-2 text-sm font-semibold text-gray-800">{booking.bookedBy?.email || '—'}</p>
+                              <p className="mt-1 text-xs text-gray-500">{booking.bookedBy?.name || 'Unknown'}</p>
+                            </div>
+                            <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+                                {booking.bookedBy?.roles?.includes('faculty') ? 'Role' : 'Roll number'}
+                              </p>
+                              <p className="mt-2 text-sm font-semibold text-gray-800">
+                                {booking.bookedBy?.roles?.includes('faculty')
+                                  ? 'Faculty'
+                                  : (booking.bookedBy?.profileDetails?.rollNumber || '—')}
+                              </p>
+                              <p className="mt-1 text-xs text-gray-500">{booking.bookedBy?.profileDetails?.department || 'Department unavailable'}</p>
+                            </div>
+                            <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Slot time</p>
+                              <p className="mt-2 text-sm font-semibold text-gray-800">{formatDate(booking.slotStartAt)}</p>
+                              <p className="mt-1 text-xs text-gray-500">{formatTime(booking.slotStartAt)} - {formatTime(booking.slotEndAt)}</p>
+                            </div>
+                            <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Group details</p>
+                              <p className="mt-2 text-sm font-semibold text-gray-800">{booking.participantCount || 1} participant(s)</p>
+                              <p className="mt-1 text-xs text-gray-500">{booking.isGroupBooking ? 'Group booking' : 'Individual booking'}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-3 lg:min-w-[220px]">
+                          <button
+                            type="button"
+                            onClick={() => handleAttendance(booking, 'present')}
+                            disabled={actionBookingId === booking._id}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {actionBookingId === booking._id ? <LoaderCircle size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                            Mark present
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAttendance(booking, 'absent')}
+                            disabled={actionBookingId === booking._id}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-red-500 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {actionBookingId === booking._id ? <LoaderCircle size={16} className="animate-spin" /> : <XCircle size={16} />}
+                            Mark absent
+                          </button>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </article>
                 )})}
               </div>

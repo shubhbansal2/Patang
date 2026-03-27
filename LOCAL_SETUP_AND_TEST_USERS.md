@@ -4,12 +4,14 @@
 
 ### 1. Install dependencies
 
+Use `npm` as the team-standard package manager.
+
 ```bash
 cd /Users/aarya/repo_main/backend
-pnpm install
+npm ci
 
 cd /Users/aarya/repo_main/frontend
-pnpm install
+npm ci
 ```
 
 ### 2. Configure environment files
@@ -27,7 +29,7 @@ Typical local setup:
 
 ```bash
 cd /Users/aarya/repo_main/backend
-pnpm start
+npm start
 ```
 
 Backend runs at:
@@ -37,54 +39,68 @@ Backend runs at:
 
 ```bash
 cd /Users/aarya/repo_main/frontend
-pnpm dev
+npm run dev
 ```
 
 Frontend runs at:
 - `http://localhost:4174/`
 
-### 5. Optional seed and repair commands
+### 5. Run tests
+
+Frontend:
+
+```bash
+cd /Users/aarya/repo_main/frontend
+npm test
+```
+
+Backend:
 
 ```bash
 cd /Users/aarya/repo_main/backend
-pnpm seed:dev
-pnpm repair:cloud-data
-pnpm seed:sports-caretakers
-pnpm seed:dashboard-events
+npm test -- --pool forks
+```
+
+Note:
+- Under the current Node 25 local environment, backend Vitest runs reliably with `--pool forks`.
+
+### 6. Optional seed and repair commands
+
+```bash
+cd /Users/aarya/repo_main/backend
+npm run seed:dev
+npm run repair:cloud-data
+npm run seed:sports-caretakers
+npm run seed:dashboard-events
 ```
 
 ## Test Users
 
-### Core scripted users
+All dedicated role accounts below are active, verified, and use:
+- password: `password123`
 
-These are created or refreshed by `seed:dev` and `repair:cloud-data`.
+### One dedicated account per role
 
-| Role | Email | Password |
-|---|---|---|
-| Student | `student@iitk.ac.in` | `password123` |
-| Caretaker | `caretaker@iitk.ac.in` | `password123` |
-| Gym Admin | `gymadmin@iitk.ac.in` | `password123` |
-| Executive | `executive@iitk.ac.in` | `password123` |
+| Role | Email | Mongo `_id` | Notes |
+|---|---|---|---|
+| Student | `student@iitk.ac.in` | `69b51a7d9bc8489f12afd866` | Primary student account for dashboard, booking, and subscriptions |
+| Faculty | `faculty@iitk.ac.in` | `69b51a7d9bc8489f12afd86a` | Generic faculty account |
+| Caretaker | `caretaker@iitk.ac.in` | `69b51a7d9bc8489f12afd86d` | Generic sports caretaker account |
+| Captain | `captain.badminton@iitk.ac.in` | `69c6c4bff8a1bb465dcc8017` | Dedicated captain account, `captainOf = Badminton` |
+| Coordinator | `coordinator@iitk.ac.in` | `69c6c4c0f8a1bb465dcc801a` | Dedicated coordinator account |
+| Executive | `executive@iitk.ac.in` | `69b51a7d9bc8489f12afd870` | Executive portal account |
+| Admin | `admin@iitk.ac.in` | `69b51a7e9bc8489f12afd873` | Full admin account |
+| Gym Admin | `gymadmin@iitk.ac.in` | `69c57361cf993766a56dd0e9` | Gym dashboard / request review / scanner |
+| Swim Admin | `swimadmin@iitk.ac.in` | `69c64a7465213dd459f6ca63` | Swimming dashboard / request review / scanner |
 
-### Additional shared admin user
+### Sports-specific caretaker accounts
 
-This account has been used in the shared DB setup even though it is not currently created by the repo seed scripts.
-
-| Role | Email | Password |
-|---|---|---|
-| Swim Admin | `swimadmin@iitk.ac.in` | `password123` |
-
-### Generated sports caretaker users
-
-These are created by `pnpm seed:sports-caretakers` based on available sports facilities.
+These are additionally created by `npm run seed:sports-caretakers`.
 
 All of them use:
 - password: `password123`
 
-Current generated email pattern:
-- `<sport>.caretaker@iitk.ac.in`
-
-Common examples in this repo setup:
+Common accounts in the shared DB:
 - `badminton.caretaker@iitk.ac.in`
 - `basketball.caretaker@iitk.ac.in`
 - `cricket.caretaker@iitk.ac.in`
@@ -93,10 +109,17 @@ Common examples in this repo setup:
 - `table.tennis.caretaker@iitk.ac.in`
 - `tennis.caretaker@iitk.ac.in`
 
+### Notes on seeded role coverage
+
+- The dedicated `captain` and `coordinator` accounts were seeded specifically so every role now has a known, shareable test login.
+- Existing older ad-hoc users still exist in the shared DB, but the accounts listed above are the recommended ones to use for demos and testing.
+
 ## Quick Verification
 
 After both servers are running:
 
 1. Open [http://localhost:4174/](http://localhost:4174/)
 2. Log in with `student@iitk.ac.in / password123`
-3. If needed, test admin views using `gymadmin@iitk.ac.in` or `swimadmin@iitk.ac.in`
+3. For admin workflows, use `gymadmin@iitk.ac.in` or `swimadmin@iitk.ac.in`
+4. For executive workflows, use `executive@iitk.ac.in`
+5. For captain workflows, use `captain.badminton@iitk.ac.in`

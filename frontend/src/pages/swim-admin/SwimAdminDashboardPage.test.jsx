@@ -69,11 +69,12 @@ describe('SwimAdminDashboardPage', () => {
       </MemoryRouter>
     );
 
-    expect(await screen.findByText(/facilities overview/i)).toBeInTheDocument();
-    expect(screen.getByText('1')).toBeInTheDocument();
-    expect(screen.getByText('7 / 30')).toBeInTheDocument();
+    expect(await screen.findByText(/recent pending requests/i)).toBeInTheDocument();
     expect(screen.getByText(/pool student/i)).toBeInTheDocument();
     expect(screen.queryByText(/gym student/i)).not.toBeInTheDocument();
+    expect(await screen.findByText((content) => content.includes('06:00') && content.includes('07:00'))).toBeInTheDocument();
+    expect(screen.getByText('5')).toBeInTheDocument();
+    expect(screen.getByText('30')).toBeInTheDocument();
   });
 
   it('renders a loading failure message when the dashboard request errors', async () => {
