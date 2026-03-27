@@ -95,6 +95,7 @@ const SubscriptionRegistrationView = ({
   const occupancyRegistered = occupancy?.registered || 0;
   const occupancyProgress = occupancyTotal > 0 ? Math.min(100, Math.round((occupancyRegistered / occupancyTotal) * 100)) : 0;
   const isFormLocked = Boolean(subscription);
+  const isStudent = data?.user?.roles?.includes('student');
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -102,16 +103,14 @@ const SubscriptionRegistrationView = ({
 
     if (isFormLocked) return;
 
-    const isFaculty = data?.user?.roles?.includes('faculty');
-
     // Mandatory profile fields
     if (!data?.user?.name?.trim()) {
       setValidationError('Your profile name is required. Please update your profile before applying.');
       return;
     }
 
-    if (!isFaculty && !data?.user?.rollNumber?.trim()) {
-      setValidationError('Roll number is required. Please update your profile before applying.');
+    if (isStudent && !data?.user?.rollNumber?.trim()) {
+      setValidationError('Roll number is required for students. Please update your profile before applying.');
       return;
     }
 
@@ -218,7 +217,7 @@ const SubscriptionRegistrationView = ({
                   <input value={data?.user?.name || ''} readOnly className={`${readOnlyFieldClassName} ${!data?.user?.name?.trim() ? 'border-red-300 bg-red-50' : ''}`} />
                   {!data?.user?.name?.trim() && <p className="mt-1 text-xs text-red-500">Name is required. Update your profile.</p>}
                 </div>
-                {!data?.user?.roles?.includes('faculty') && (
+                {isStudent && (
                   <div>
                     <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Roll number <span className="text-red-500">*</span></label>
                     <input value={data?.user?.rollNumber || 'Not available'} readOnly className={`${readOnlyFieldClassName} ${!data?.user?.rollNumber?.trim() ? 'border-red-300 bg-red-50' : ''}`} />

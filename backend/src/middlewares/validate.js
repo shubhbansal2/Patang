@@ -20,8 +20,9 @@ export const validateSubscriptionApply = (req, res, next) => {
     if (!req.user?.name?.trim()) {
         return errorResponse(res, 400, 'VALIDATION_ERROR', 'Your profile name is required. Please update your profile before applying.');
     }
-    if (!req.user?.profileDetails?.rollNumber?.trim()) {
-        return errorResponse(res, 400, 'VALIDATION_ERROR', 'Roll number is required. Please update your profile before applying.');
+    const isStudent = req.user?.roles?.includes('student');
+    if (isStudent && !req.user?.profileDetails?.rollNumber?.trim()) {
+        return errorResponse(res, 400, 'VALIDATION_ERROR', 'Roll number is required for students. Please update your profile before applying.');
     }
 
     if (!facilityType || !['Gym', 'SwimmingPool'].includes(facilityType)) {

@@ -6,7 +6,7 @@ import { validateSubscriptionApply } from '../middlewares/validate.js';
 
 const router = express.Router();
 
-router.post('/apply', protectRoute, authorizeRoles('student', 'faculty'), subscriptionUpload, handleUploadError, validateSubscriptionApply, apply);
+router.post('/apply', protectRoute, subscriptionUpload, handleUploadError, validateSubscriptionApply, apply);
 router.get('/my', protectRoute, getMySubscriptions);
 router.get('/:subscriptionId/documents/:documentType', protectRoute, getSubscriptionDocument);
 router.post('/verify-entry', protectRoute, authorizeRoles('caretaker', 'admin', 'gym_admin', 'swim_admin'), verifyEntry);

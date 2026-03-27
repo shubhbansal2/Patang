@@ -194,6 +194,7 @@ const SlotBookingPage = () => {
         success: 'Your gym registration was submitted and the latest status has been loaded.',
         error: '',
       });
+      window.alert('Your gym registration has been submitted successfully! It is now under review.');
       await loadGym({ background: true });
     } catch (error) {
       setGymSubmission({
@@ -214,6 +215,7 @@ const SlotBookingPage = () => {
         success: 'Your swimming registration was submitted and the latest status has been loaded.',
         error: '',
       });
+      window.alert('Your swimming registration has been submitted successfully! It is now under review.');
       await loadSwimming({ background: true });
     } catch (error) {
       setSwimmingSubmission({
