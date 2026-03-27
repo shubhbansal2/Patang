@@ -17,7 +17,7 @@ import { successResponse, errorResponse } from '../utils/apiResponse.js';
 export const listCaptains = async (req, res) => {
     try {
         const captains = await User.find({ roles: 'captain' })
-            .select('name email captainOf status profileDetails.rollNumber profileDetails.department')
+            .select('name email roles captainOf status profileDetails.rollNumber profileDetails.department')
             .sort({ captainOf: 1, name: 1 })
             .maxTimeMS(5000)
             .lean();
@@ -179,7 +179,7 @@ export const dismissCaptain = async (req, res) => {
 export const getPendingPracticeBlocks = async (req, res) => {
     try {
         const blocks = await TeamPracticeBlock.find({ status: 'pending' })
-            .populate('captain', 'name email captainOf profileDetails.rollNumber')
+            .populate('captain', 'name email roles captainOf profileDetails.rollNumber')
             .populate('facility', 'name sportType location')
             .sort({ createdAt: 1 })
             .maxTimeMS(5000)

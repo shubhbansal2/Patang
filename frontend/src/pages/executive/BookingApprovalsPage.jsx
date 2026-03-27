@@ -261,8 +261,8 @@ const BookingApprovalsPage = () => {
                                                 <div className="flex items-start gap-3 text-sm text-gray-600">
                                                     <User size={16} className="text-gray-400 mt-0.5 shrink-0" />
                                                     <div>
-                                                        <p className="font-semibold text-gray-800">{request.requestedBy?.name || request.requester?.name || 'Unknown'}</p>
-                                                        <p className="text-xs text-gray-400">{request.requestedBy?.email || request.requester?.email || ''}</p>
+                                                        <p className="font-semibold text-gray-800">{request.requestedBy?.email || request.requester?.email || 'No email'}</p>
+                                                        <p className="text-xs text-gray-500">{request.requestedBy?.name || request.requester?.name || 'Unknown Name'}</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-start gap-3 text-sm text-gray-600">
@@ -362,8 +362,8 @@ const BookingApprovalsPage = () => {
                                                 <div className="flex items-start gap-3 text-sm text-gray-600">
                                                     <User size={16} className="text-gray-400 mt-0.5 shrink-0" />
                                                     <div>
-                                                        <p className="font-semibold text-gray-800">{event.createdBy?.name || 'Unknown'}</p>
-                                                        <p className="text-xs text-gray-400">{event.createdBy?.email || ''}</p>
+                                                        <p className="font-semibold text-gray-800">{event.createdBy?.email || 'No email'}</p>
+                                                        <p className="text-xs text-gray-500">{event.createdBy?.name || 'Unknown Name'}</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-start gap-3 text-sm text-gray-600">

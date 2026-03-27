@@ -112,7 +112,7 @@ export const listPendingSubscriptionRequests = async (req, res) => {
     try {
         const status = req.query.status?.toLowerCase() || 'pending';
         const subscriptions = await Subscription.find({ status })
-            .populate('user', 'name email profileDetails.rollNumber')
+            .populate('user', 'name email roles profileDetails.rollNumber')
             .populate('plan')
             .populate('facility')
             .sort({ createdAt: 1 });
@@ -204,7 +204,7 @@ export const scanAccessPass = async (req, res) => {
             validUntil: { $gt: new Date() }
         }).populate({
             path: 'subscription',
-            populate: [{ path: 'user', select: 'name email profileDetails.rollNumber' }, { path: 'plan' }]
+            populate: [{ path: 'user', select: 'name email roles profileDetails.rollNumber' }, { path: 'plan' }]
         });
 
         if (!pass || !pass.subscription || pass.subscription.status !== 'active') {

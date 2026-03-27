@@ -42,7 +42,7 @@ const findUserByIdentifier = async (identifier) => {
         orConditions.unshift({ _id: identifier });
     }
 
-    return User.findOne({ $or: orConditions }).select('name email profileDetails');
+    return User.findOne({ $or: orConditions }).select('name email roles profileDetails');
 };
 
 const releaseSlotForBooking = async (booking) => {
@@ -419,7 +419,7 @@ export const listBookingsForCaretaker = async (req, res) => {
         }
 
         const bookings = await Booking.find(query)
-            .populate('userId', 'name email profileDetails.rollNumber')
+            .populate('userId', 'name email roles profileDetails.rollNumber')
             .populate('facilityId', 'name facilityType sportType location')
             .populate('slotId', 'date startTime endTime status')
             .sort({ slotDate: 1, createdAt: 1 });
@@ -477,7 +477,7 @@ export const verifyAttendeeByIdentifier = async (req, res) => {
         const booking = await Booking.findOne(query)
             .populate('facilityId', 'name facilityType sportType')
             .populate('slotId', 'date startTime endTime')
-            .populate('userId', 'name email profileDetails.rollNumber');
+            .populate('userId', 'name email roles profileDetails.rollNumber');
 
         if (!booking) {
             return successResponse(res, 200, {

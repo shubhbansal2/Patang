@@ -155,7 +155,7 @@ const SportsCaretakerPage = () => {
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-500">Caretaker / Sports</p>
           <h1 className="mt-1 text-2xl font-bold text-gray-800">Sports caretaker console</h1>
           <p className="mt-2 max-w-3xl text-sm text-gray-500">
-            Review upcoming sports bookings, verify attendee identity by roll number or email, and mark students present or absent at the facility desk.
+            Review upcoming sports bookings, verify attendee identity by roll number or email, and mark attendees present or absent at the facility desk.
           </p>
         </div>
         <button
@@ -267,13 +267,17 @@ const SportsCaretakerPage = () => {
                         </p>
                         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                           <div className="rounded-2xl border border-gray-100 bg-white p-4">
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Booked by</p>
-                            <p className="mt-2 text-sm font-semibold text-gray-800">{booking.bookedBy?.name || 'Unknown'}</p>
-                            <p className="mt-1 text-xs text-gray-500">{booking.bookedBy?.email || '—'}</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Attendee</p>
+                            <p className="mt-2 text-sm font-semibold text-gray-800">{booking.bookedBy?.email || '—'}</p>
+                            <p className="mt-1 text-xs text-gray-500">{booking.bookedBy?.name || 'Unknown'}</p>
                           </div>
                           <div className="rounded-2xl border border-gray-100 bg-white p-4">
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Roll number</p>
-                            <p className="mt-2 text-sm font-semibold text-gray-800">{booking.bookedBy?.profileDetails?.rollNumber || '—'}</p>
+                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+                              {booking.bookedBy?.roles?.includes('faculty') ? 'Role' : 'Roll number'}
+                            </p>
+                            <p className="mt-2 text-sm font-semibold text-gray-800">
+                              {booking.bookedBy?.roles?.includes('faculty') ? 'Faculty' : (booking.bookedBy?.profileDetails?.rollNumber || '—')}
+                            </p>
                             <p className="mt-1 text-xs text-gray-500">{booking.bookedBy?.profileDetails?.department || 'Department unavailable'}</p>
                           </div>
                           <div className="rounded-2xl border border-gray-100 bg-white p-4">
@@ -404,7 +408,7 @@ const SportsCaretakerPage = () => {
               <ShieldAlert size={18} className="text-brand-500" />
               <div>
                 <h2 className="text-lg font-bold text-gray-800">Caretaker notes</h2>
-                <p className="mt-1 text-sm text-gray-500">These actions map directly to the backend attendance workflow.</p>
+                <p className="mt-1 text-sm text-gray-500">Log entries or search recent facility activity.</p>
               </div>
             </div>
             <ul className="mt-4 space-y-3 text-sm text-gray-600">

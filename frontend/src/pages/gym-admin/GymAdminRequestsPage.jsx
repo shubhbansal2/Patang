@@ -39,7 +39,7 @@ const GymAdminRequestsPage = () => {
       setRequests(data.data?.subscriptions || []);
     } catch (err) {
       console.error('Fetch requests error:', err);
-      setError(err.response?.data?.message || 'Failed to load subscription requests');
+      setError(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to load subscription requests');
     } finally {
       setLoading(false);
     }
@@ -87,7 +87,7 @@ const GymAdminRequestsPage = () => {
       handleCloseModal();
     } catch (err) {
       console.error(`${actionType} error:`, err);
-      setActionError(err.response?.data?.message || `Failed to ${actionType} request`);
+      setActionError(err.response?.data?.error?.message || err.response?.data?.message || `Failed to ${actionType} request`);
     } finally {
       setSubmitting(false);
     }
@@ -220,9 +220,10 @@ const GymAdminRequestsPage = () => {
                     <div className="flex items-start gap-3 text-sm text-gray-600">
                       <User size={16} className="text-gray-400 mt-0.5 shrink-0" />
                       <div>
-                        <p className="font-semibold text-gray-800">{request.userId?.name || 'Unknown User'}</p>
-                        <p className="text-xs text-brand-600 font-semibold">{request.userId?.profileDetails?.rollNumber ? `Roll No: ${request.userId.profileDetails.rollNumber}` : 'No roll number'}</p>
-                        <p className="text-xs text-gray-400">{request.userId?.email || 'No email provided'}</p>
+                        <p className="font-semibold text-gray-800">{request.userId?.email || 'No email provided'}</p>
+                        <p className="text-xs text-gray-500 font-medium">
+                          {request.userId?.name || 'Unknown'} • {request.userId?.roles?.includes('faculty') ? 'Faculty' : (request.userId?.profileDetails?.rollNumber || 'No roll number')}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3 text-sm text-gray-600">

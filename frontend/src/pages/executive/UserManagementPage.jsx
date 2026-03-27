@@ -86,6 +86,7 @@ const UserManagementPage = () => {
                 >
                     <option value="all">All Roles</option>
                     <option value="student">Student</option>
+                    <option value="faculty">Faculty</option>
                     <option value="coordinator">Coordinator</option>
                     <option value="executive">Executive</option>
                 </select>
@@ -107,13 +108,18 @@ const UserManagementPage = () => {
                             {paginatedData.map(user => (
                                 <tr key={user._id} className="hover:bg-gray-50">
                                     <td className="px-6 py-4">
-                                        <p className="font-semibold text-gray-800">{user.name}</p>
-                                        <p className="text-xs text-gray-500">{user.email}</p>
+                                        <p className="font-semibold text-gray-800">{user.email}</p>
+                                        <p className="text-xs text-gray-500">{user.name}</p>
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex gap-1.5 flex-wrap">
                                             {user.roles?.map(r => (
-                                                <span key={r} className={`px-2 py-1 rounded text-xs font-semibold uppercase ${r === 'executive' ? 'bg-purple-100 text-purple-700' : r === 'coordinator' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>{r}</span>
+                                                <span key={r} className={`px-2 py-1 rounded text-xs font-semibold uppercase ${
+                                                    r === 'executive' ? 'bg-purple-100 text-purple-700' : 
+                                                    r === 'coordinator' ? 'bg-amber-100 text-amber-700' : 
+                                                    r === 'faculty' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-gray-100 text-gray-600'
+                                                }`}>{r}</span>
                                             ))}
                                         </div>
                                     </td>
@@ -137,7 +143,7 @@ const UserManagementPage = () => {
                             <h3 className="text-lg font-bold">Edit Roles: {editingUser.name}</h3>
                         </div>
                         <div className="space-y-3 mb-6">
-                            {['student', 'coordinator', 'executive'].map(r => (
+                            {['student', 'faculty', 'coordinator', 'executive'].map(r => (
                                 <label key={r} className="flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:bg-gray-50">
                                     <input
                                         type="checkbox"

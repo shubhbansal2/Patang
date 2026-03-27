@@ -4,14 +4,24 @@ import sendEmail from '../utils/sendEmail.js';
 
 export const registerUser = async (req, res) => {
     try {
-        const { name, email, password, confirmPassword, rollNumber } = req.body;
+        const { name, email, password, confirmPassword, rollNumber, userType } = req.body;
 
         if (password !== confirmPassword) {
             return res.status(400).json({ message: "Passwords do not match" });
         }
 
-        if (!email.endsWith('@iitk.ac.in')) {
-            return res.status(400).json({ message: "Invalid domain. Institute email required." });
+        if (!email || !email.endsWith('@iitk.ac.in')) {
+            return res.status(400).json({ message: "Invalid domain. Institute email (@iitk.ac.in) required." });
+        }
+
+        let finalRollNumber = rollNumber || '';
+
+        if (userType === 'student') {
+            if (!rollNumber) {
+                return res.status(400).json({ message: "Roll number is required for students" });
+            }
+        } else if (userType === 'faculty') {
+            finalRollNumber = ''; // Faculty don't need roll numbers
         }
 
         const userExists = await User.findOne({ email });
@@ -26,8 +36,9 @@ export const registerUser = async (req, res) => {
             name,
             email,
             password,
+            roles: [userType || 'student'],
             otp: generatedOtp,
-            profileDetails: { rollNumber: rollNumber || '' }
+            profileDetails: { rollNumber: finalRollNumber }
         });
 
         if (user) {
@@ -42,7 +53,7 @@ export const registerUser = async (req, res) => {
             res.status(201).json({
                 _id: user._id,
                 email: user.email,
-                message: "Activation code sent successfully"
+                message: `Activation code sent to ${user.email} successfully`
             });
         } else {
             res.status(400).json({ message: "Invalid user data" });

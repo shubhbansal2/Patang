@@ -546,6 +546,7 @@ export const getGymRegistrationPage = async (req, res) => {
         const userDetails = {
             name: req.user.name,
             email: req.user.email,
+            roles: req.user.roles,
             rollNumber: req.user.profileDetails?.rollNumber || null,
             department: req.user.profileDetails?.department || null,
             program: req.user.profileDetails?.program || null
@@ -666,6 +667,7 @@ export const getSwimmingRegistrationPage = async (req, res) => {
         const userDetails = {
             name: req.user.name,
             email: req.user.email,
+            roles: req.user.roles,
             rollNumber: req.user.profileDetails?.rollNumber || null,
             department: req.user.profileDetails?.department || null,
             program: req.user.profileDetails?.program || null

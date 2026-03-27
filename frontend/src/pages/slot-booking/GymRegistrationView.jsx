@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  CalendarRange,
   CheckCircle2,
   CreditCard,
   FileText,
@@ -29,11 +30,11 @@ const facilityMeta = {
   Gym: {
     eyebrow: 'Facilities / Gym',
     title: 'Gym registration',
-    description: 'Review your gym subscription options, upload the required documents, and submit a registration request using the backend flow already available in this project.',
+    description: 'Review your gym subscription options, upload the required documents, and submit a registration request.',
     sectionDescription: 'Choose the active gym plan you want to apply for.',
     activeMessage: 'Your current pass stays active until',
     pendingMessage: 'Your previous request is still under review. New submissions are disabled until it is resolved.',
-    note: 'Preferred slot, emergency contact, and SBI reference fields are intentionally deferred.',
+    note: '',
     icon: HeartPulse,
     lockedLabel: 'Gym subscription',
     emptyPlansTitle: 'No gym plans found',
@@ -42,11 +43,11 @@ const facilityMeta = {
   SwimmingPool: {
     eyebrow: 'Facilities / Swimming',
     title: 'Swimming registration',
-    description: 'Review swimming subscription plans, check live occupancy, and submit the required registration documents using the same backend workflow.',
+    description: 'Review swimming subscription plans, check live occupancy, and submit the required registration documents.',
     sectionDescription: 'Choose the active swimming plan you want to apply for.',
     activeMessage: 'Your current swimming pass stays active until',
     pendingMessage: 'Your previous swimming request is still under review. New submissions are disabled until it is resolved.',
-    note: 'Preferred lane, coach preference, and extra medical profile fields are intentionally deferred.',
+    note: '',
     icon: Waves,
     lockedLabel: 'Swimming subscription',
     emptyPlansTitle: 'No swimming plans found',
@@ -66,6 +67,7 @@ const SubscriptionRegistrationView = ({
   const meta = facilityMeta[facilityType] || facilityMeta.Gym;
   const FacilityIcon = meta.icon;
   const [selectedPlanId, setSelectedPlanId] = useState('');
+  const [selectedSlotId, setSelectedSlotId] = useState('');
   const [medicalCert, setMedicalCert] = useState(null);
   const [paymentReceipt, setPaymentReceipt] = useState(null);
   const [validationError, setValidationError] = useState('');
@@ -79,7 +81,12 @@ const SubscriptionRegistrationView = ({
     if (!selectedPlanId && data?.plans?.length) {
       setSelectedPlanId(data.plans[0]._id || data.plans[0].planDuration || data.plans[0].name);
     }
-  }, [data, selectedPlanId]);
+
+    if (!selectedSlotId && data?.slots?.length) {
+      const availableSlot = data.slots.find(s => s.activeCount < s.capacity) || data.slots[0];
+      setSelectedSlotId(availableSlot._id);
+    }
+  }, [data, selectedPlanId, selectedSlotId]);
 
   const selectedPlan = data?.plans?.find((plan) => (plan._id || plan.planDuration || plan.name) === selectedPlanId) || data?.plans?.[0] || null;
   const subscription = data?.currentSubscription || null;
@@ -95,19 +102,26 @@ const SubscriptionRegistrationView = ({
 
     if (isFormLocked) return;
 
+    const isFaculty = data?.user?.roles?.includes('faculty');
+
     // Mandatory profile fields
     if (!data?.user?.name?.trim()) {
       setValidationError('Your profile name is required. Please update your profile before applying.');
       return;
     }
 
-    if (!data?.user?.rollNumber?.trim()) {
+    if (!isFaculty && !data?.user?.rollNumber?.trim()) {
       setValidationError('Roll number is required. Please update your profile before applying.');
       return;
     }
 
     if (!selectedPlan) {
       setValidationError('Select a plan before submitting the registration.');
+      return;
+    }
+
+    if (!selectedSlotId) {
+      setValidationError('Select an available time slot before submitting.');
       return;
     }
 
@@ -124,6 +138,7 @@ const SubscriptionRegistrationView = ({
     onSubmit({
       facilityType,
       plan: selectedPlan,
+      slotId: selectedSlotId,
       medicalCert,
       paymentReceipt,
     });
@@ -195,29 +210,26 @@ const SubscriptionRegistrationView = ({
 
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Full name <span className="text-red-500">*</span></label>
-                  <input value={data?.user?.name || ''} readOnly className={`${readOnlyFieldClassName} ${!data?.user?.name?.trim() ? 'border-red-300 bg-red-50' : ''}`} />
-                  {!data?.user?.name?.trim() && <p className="mt-1 text-xs text-red-500">Name is required. Update your profile.</p>}
-                </div>
-                <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Email</label>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Email Address <span className="text-red-500">*</span></label>
                   <input value={data?.user?.email || ''} readOnly className={readOnlyFieldClassName} />
                 </div>
                 <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Roll number <span className="text-red-500">*</span></label>
-                  <input value={data?.user?.rollNumber || 'Not available'} readOnly className={`${readOnlyFieldClassName} ${!data?.user?.rollNumber?.trim() ? 'border-red-300 bg-red-50' : ''}`} />
-                  {!data?.user?.rollNumber?.trim() && <p className="mt-1 text-xs text-red-500">Roll number is required. Update your profile.</p>}
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Full name</label>
+                  <input value={data?.user?.name || ''} readOnly className={`${readOnlyFieldClassName} ${!data?.user?.name?.trim() ? 'border-red-300 bg-red-50' : ''}`} />
+                  {!data?.user?.name?.trim() && <p className="mt-1 text-xs text-red-500">Name is required. Update your profile.</p>}
                 </div>
+                {!data?.user?.roles?.includes('faculty') && (
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Roll number <span className="text-red-500">*</span></label>
+                    <input value={data?.user?.rollNumber || 'Not available'} readOnly className={`${readOnlyFieldClassName} ${!data?.user?.rollNumber?.trim() ? 'border-red-300 bg-red-50' : ''}`} />
+                    {!data?.user?.rollNumber?.trim() && <p className="mt-1 text-xs text-red-500">Roll number is required. Update your profile.</p>}
+                  </div>
+                )}
                 <div>
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Department</label>
                   <input value={data?.user?.department || 'Not available'} readOnly className={readOnlyFieldClassName} />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Backend scope note</label>
-                  <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-                    This version only submits the fields currently supported by the backend: plan, medical certificate, and payment receipt. {meta.note}
-                  </div>
-                </div>
+
               </div>
             </section>
 
@@ -289,11 +301,61 @@ const SubscriptionRegistrationView = ({
             <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="rounded-2xl bg-brand-50 p-3 text-brand-600">
+                  <CalendarRange size={18} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-800">Select a time slot</h2>
+                  <p className="mt-1 text-sm text-gray-500">Pick an available time slot for your {facilityType.toLowerCase()} subscription. Some slots may be full.</p>
+                </div>
+              </div>
+
+              {data?.slots?.length ? (
+                <div className="mt-5 grid gap-4 grid-cols-2 sm:grid-cols-3">
+                  {data.slots.map((slot) => {
+                    const isSelected = slot._id === selectedSlotId;
+                    const isFull = slot.activeCount >= slot.capacity;
+                    return (
+                      <button
+                        key={slot._id}
+                        type="button"
+                        disabled={isFormLocked || isFull}
+                        onClick={() => setSelectedSlotId(slot._id)}
+                        className={`group relative flex flex-col items-center justify-center gap-1 rounded-2xl border p-4 text-center transition-all ${
+                          isSelected
+                            ? 'border-brand-500 bg-brand-50 shadow-[inset_0_0_0_1px_rgba(var(--brand-500),0.3)]'
+                            : isFull 
+                            ? 'border-red-100 bg-red-50 opacity-60 cursor-not-allowed'
+                            : 'border-gray-200 bg-gray-50 hover:border-brand-200 hover:bg-brand-50/50'
+                        } ${isFormLocked ? 'cursor-not-allowed opacity-70' : ''}`}
+                      >
+                        <p className={`text-sm font-bold ${isFull ? 'text-red-800' : 'text-gray-800'}`}>
+                          {slot.startTime} - {slot.endTime}
+                        </p>
+                        <p className={`text-[10px] font-semibold uppercase tracking-[0.1em] ${isFull ? 'text-red-500' : 'text-gray-500'}`}>
+                           {isFull ? 'Full capacity' : `${slot.spotsLeft} slots left`}
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="mt-5">
+                  <EmptyState
+                    title="No slots available"
+                    description="There are no active time slots for this facility right now."
+                  />
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl bg-brand-50 p-3 text-brand-600">
                   <FileText size={18} />
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-gray-800">Payment and documents</h2>
-                  <p className="mt-1 text-sm text-gray-500">Upload the two files required by the subscription backend.</p>
+                  <p className="mt-1 text-sm text-gray-500">Upload your required registration documents.</p>
                 </div>
               </div>
 
@@ -430,9 +492,7 @@ const SubscriptionRegistrationView = ({
                   : 'Submit registration'}
             </button>
 
-            <p className="mt-3 text-xs text-gray-500">
-              The backend requires both document uploads even if the design mock highlights only the receipt field.
-            </p>
+
           </div>
 
           <RulesCard title="Quick rules" rules={data?.quickRules || []} accent="info" />

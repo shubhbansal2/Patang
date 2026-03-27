@@ -6,6 +6,7 @@ import loginBG from '../../assets/loginBG.jpg';
 
 const RegisterPage = () => {
   const [step, setStep] = useState('register'); // 'register' | 'otp'
+  const [userType, setUserType] = useState('student'); // 'student' | 'faculty'
   const [name, setName] = useState('');
   const [rollNumber, setRollNumber] = useState('');
   const [email, setEmail] = useState('');
@@ -30,9 +31,16 @@ const RegisterPage = () => {
       setError('Passwords do not match');
       return;
     }
-    const result = await register(name.trim(), email.trim(), rollNumber.trim(), p, cp);
+    const result = await register(
+      name.trim(), 
+      email.trim(), 
+      userType === 'student' ? rollNumber.trim() : '', 
+      p, 
+      cp, 
+      userType
+    );
     if (result.success) {
-      setMessage('OTP sent to your email!');
+      setMessage(`OTP sent to ${result.data.email}!`);
       setStep('otp');
     } else {
       setError(result.message);
@@ -54,9 +62,16 @@ const RegisterPage = () => {
     setError('');
     const p = password.trim();
     const cp = confirmPassword.trim();
-    const result = await register(name.trim(), email.trim(), rollNumber.trim(), p, cp);
+    const result = await register(
+      name.trim(),
+      email.trim(),
+      userType === 'student' ? rollNumber.trim() : '',
+      p,
+      cp,
+      userType
+    );
     if (result.success) {
-      setMessage('OTP re-sent to your email!');
+      setMessage(`OTP re-sent to ${result.data.email}!`);
     } else {
       setError(result.message);
     }
@@ -84,9 +99,23 @@ const RegisterPage = () => {
         {step === 'register' ? (
           <>
             <h1 className="text-3xl font-extrabold text-gray-800 mb-2">Sign up</h1>
-            {/* <p className="text-gray-500 mb-8">
-              Sign up by entering your email address and password. We'll email you an OTP for verification.
-            </p> */}
+            
+            <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
+              <button 
+                type="button" 
+                onClick={() => setUserType('student')}
+                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${userType === 'student' ? 'bg-white text-brand-500 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Student
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setUserType('faculty')}
+                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${userType === 'faculty' ? 'bg-white text-brand-500 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                Faculty
+              </button>
+            </div>
 
             <form onSubmit={handleRegister} className="space-y-5">
               <div>
@@ -98,24 +127,29 @@ const RegisterPage = () => {
                     className="w-full pl-10 pr-4 py-3 bg-white rounded-lg border border-gray-300 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all" />
                 </div>
               </div>
+
               <div>
-                <label htmlFor="register-roll" className="block text-sm font-medium text-gray-600 mb-1.5">Roll Number</label>
-                <div className="relative">
-                  <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input id="register-roll" name="rollNumber" type="text" value={rollNumber} onChange={(e) => setRollNumber(e.target.value)}
-                    placeholder="Roll No." required
-                    className="w-full pl-10 pr-4 py-3 bg-white rounded-lg border border-gray-300 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all" />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="register-email" className="block text-sm font-medium text-gray-600 mb-1.5">Email address</label>
+                <label htmlFor="register-email" className="block text-sm font-medium text-gray-600 mb-1.5">Email Address</label>
                 <div className="relative">
                   <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                   <input id="register-email" name="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)}
                     placeholder="user@iitk.ac.in" required
                     className="w-full pl-10 pr-4 py-3 bg-white rounded-lg border border-gray-300 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all" />
                 </div>
+                <p className="mt-1 text-xs text-gray-400">OTP will be sent to this email address.</p>
               </div>
+
+              {userType === 'student' && (
+                <div>
+                  <label htmlFor="register-roll" className="block text-sm font-medium text-gray-600 mb-1.5">Roll Number</label>
+                  <div className="relative">
+                    <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input id="register-roll" name="rollNumber" type="text" value={rollNumber} onChange={(e) => setRollNumber(e.target.value)}
+                      placeholder="Roll No. (e.g. 210123)" required
+                      className="w-full pl-10 pr-4 py-3 bg-white rounded-lg border border-gray-300 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all" />
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label htmlFor="register-password" className="block text-sm font-medium text-gray-600 mb-1.5">Password</label>

@@ -86,10 +86,14 @@ export const getFacilityOccupancySummary = async (facilityType) => {
         Facility.findOne({ facilityType: normalizedFacilityType }).sort({ createdAt: 1 })
     ]);
 
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
     const occupancy = await AccessLog.aggregate([
         {
             $match: {
-                facilityType: { $in: [subscriptionType, normalizedFacilityType] }
+                facilityType: { $in: [subscriptionType, normalizedFacilityType] },
+                scannedAt: { $gte: startOfDay }
             }
         },
         {
