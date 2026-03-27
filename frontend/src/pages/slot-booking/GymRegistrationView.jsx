@@ -30,11 +30,11 @@ const facilityMeta = {
   Gym: {
     eyebrow: 'Facilities / Gym',
     title: 'Gym registration',
-    description: 'Review your gym subscription options, upload the required documents, and submit a registration request using the backend flow already available in this project.',
+    description: 'Review your gym subscription options, upload the required documents, and submit a registration request.',
     sectionDescription: 'Choose the active gym plan you want to apply for.',
     activeMessage: 'Your current pass stays active until',
     pendingMessage: 'Your previous request is still under review. New submissions are disabled until it is resolved.',
-    note: 'Preferred slot, emergency contact, and SBI reference fields are intentionally deferred.',
+    note: '',
     icon: HeartPulse,
     lockedLabel: 'Gym subscription',
     emptyPlansTitle: 'No gym plans found',
@@ -43,11 +43,11 @@ const facilityMeta = {
   SwimmingPool: {
     eyebrow: 'Facilities / Swimming',
     title: 'Swimming registration',
-    description: 'Review swimming subscription plans, check live occupancy, and submit the required registration documents using the same backend workflow.',
+    description: 'Review swimming subscription plans, check live occupancy, and submit the required registration documents.',
     sectionDescription: 'Choose the active swimming plan you want to apply for.',
     activeMessage: 'Your current swimming pass stays active until',
     pendingMessage: 'Your previous swimming request is still under review. New submissions are disabled until it is resolved.',
-    note: 'Preferred lane, coach preference, and extra medical profile fields are intentionally deferred.',
+    note: '',
     icon: Waves,
     lockedLabel: 'Swimming subscription',
     emptyPlansTitle: 'No swimming plans found',
@@ -225,12 +225,7 @@ const SubscriptionRegistrationView = ({
                   <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Department</label>
                   <input value={data?.user?.department || 'Not available'} readOnly className={readOnlyFieldClassName} />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">Backend scope note</label>
-                  <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-                    This version only submits the fields currently supported by the backend: plan, medical certificate, and payment receipt. {meta.note}
-                  </div>
-                </div>
+
               </div>
             </section>
 
@@ -356,7 +351,7 @@ const SubscriptionRegistrationView = ({
                 </div>
                 <div>
                   <h2 className="text-lg font-bold text-gray-800">Payment and documents</h2>
-                  <p className="mt-1 text-sm text-gray-500">Upload the two files required by the subscription backend.</p>
+                  <p className="mt-1 text-sm text-gray-500">Upload your required registration documents.</p>
                 </div>
               </div>
 
@@ -493,9 +488,7 @@ const SubscriptionRegistrationView = ({
                   : 'Submit registration'}
             </button>
 
-            <p className="mt-3 text-xs text-gray-500">
-              The backend requires both document uploads even if the design mock highlights only the receipt field.
-            </p>
+
           </div>
 
           <RulesCard title="Quick rules" rules={data?.quickRules || []} accent="info" />
