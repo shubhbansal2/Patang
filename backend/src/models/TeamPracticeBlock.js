@@ -17,6 +17,9 @@ const teamPracticeBlockSchema = new mongoose.Schema(
             required: true,
             trim: true
         },
+        practiceDate: {
+            type: Date
+        },
         startTime: {
             type: String,
             required: true
@@ -57,6 +60,7 @@ const teamPracticeBlockSchema = new mongoose.Schema(
 );
 
 teamPracticeBlockSchema.index({ facility: 1, status: 1, daysOfWeek: 1 });
+teamPracticeBlockSchema.index({ facility: 1, status: 1, practiceDate: 1 });
 teamPracticeBlockSchema.index({ captain: 1, status: 1 });
 
 const TeamPracticeBlock = mongoose.model('TeamPracticeBlock', teamPracticeBlockSchema);

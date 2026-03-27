@@ -8,6 +8,7 @@ const {
   sportsBookingCountDocumentsMock,
   sportsSlotFindByIdMock,
   facilityBlockFindOneMock,
+  teamPracticeBlockFindOneMock,
   userFindOneMock,
 } = vi.hoisted(() => ({
   sportsBookingFindByIdMock: vi.fn(),
@@ -16,6 +17,7 @@ const {
   sportsBookingCountDocumentsMock: vi.fn(),
   sportsSlotFindByIdMock: vi.fn(),
   facilityBlockFindOneMock: vi.fn(),
+  teamPracticeBlockFindOneMock: vi.fn(),
   userFindOneMock: vi.fn(),
 }));
 
@@ -50,7 +52,15 @@ vi.mock('../models/SportsBooking.js', () => ({
   },
 }));
 
-import { checkAvailability, listBookingsForCaretaker, updateBooking, verifyAttendeeForCaretaker } from './bookingController.js';
+vi.mock('../models/TeamPracticeBlock.js', () => ({
+  default: {
+    findOne: teamPracticeBlockFindOneMock,
+    find: vi.fn(),
+  },
+}));
+
+import TeamPracticeBlock from '../models/TeamPracticeBlock.js';
+import { checkAvailability, createBooking, listBookingsForCaretaker, updateBooking, verifyAttendeeForCaretaker } from './bookingController.js';
 
 describe('bookingController', () => {
   beforeEach(() => {
@@ -158,6 +168,7 @@ describe('bookingController', () => {
     ]));
     sportsBookingCountDocumentsMock.mockResolvedValueOnce(1);
     facilityBlockFindOneMock.mockResolvedValueOnce(null);
+    teamPracticeBlockFindOneMock.mockReturnValueOnce(createChain(null));
 
     const req = {
       query: { slotId: 'slot-1', bookingDate: '2026-03-27' },
@@ -188,6 +199,7 @@ describe('bookingController', () => {
     sportsBookingFindMock.mockReturnValueOnce(createChain([]));
     sportsBookingCountDocumentsMock.mockResolvedValueOnce(0);
     facilityBlockFindOneMock.mockResolvedValueOnce({ reason: 'Maintenance' });
+    teamPracticeBlockFindOneMock.mockReturnValueOnce(createChain(null));
 
     const req = {
       query: { slotId: 'slot-1', bookingDate: '2026-03-27' },
@@ -215,7 +227,74 @@ describe('bookingController', () => {
     expect(res.body.message).toBe('slotId and bookingDate are required');
   });
 
+  it('marks slot availability as blocked when an approved captain practice overlaps', async () => {
+    sportsSlotFindByIdMock.mockReturnValueOnce(createChain({
+      _id: 'slot-1',
+      isActive: true,
+      startTime: '07:00',
+      endTime: '08:00',
+      capacity: 4,
+      facility: {
+        _id: 'facility-1',
+        name: 'Badminton Court 2',
+      },
+    }));
+    sportsBookingFindMock.mockReturnValueOnce(createChain([]));
+    sportsBookingCountDocumentsMock.mockResolvedValueOnce(0);
+    facilityBlockFindOneMock.mockResolvedValueOnce(null);
+    teamPracticeBlockFindOneMock.mockReturnValueOnce(createChain({
+      captain: { name: 'Badminton Captain' },
+    }));
+
+    const req = {
+      query: { slotId: 'slot-1', bookingDate: '2026-03-27' },
+      user: { _id: 'user-1' },
+    };
+    const res = createMockRes();
+
+    await checkAvailability(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.isBlocked).toBe(true);
+    expect(res.body.blockReason).toMatch(/team practice booked by Badminton Captain/i);
+  });
+
+  it('rejects booking creation when an approved captain practice overlaps the slot', async () => {
+    sportsSlotFindByIdMock.mockReturnValueOnce(createChain({
+      _id: 'slot-1',
+      isActive: true,
+      startTime: '07:00',
+      endTime: '08:00',
+      capacity: 4,
+      facility: {
+        _id: 'facility-1',
+        name: 'Badminton Court 2',
+        facilityType: 'sports',
+        isOperational: true,
+      },
+    }));
+    sportsBookingCountDocumentsMock.mockResolvedValueOnce(0);
+    facilityBlockFindOneMock.mockResolvedValueOnce(null);
+    teamPracticeBlockFindOneMock.mockReturnValueOnce(createChain({
+      captain: { name: 'Badminton Captain' },
+    }));
+    sportsBookingFindMock.mockReturnValueOnce(createChain([]));
+    sportsBookingFindOneMock.mockReturnValueOnce(createChain(null));
+
+    const req = {
+      body: { slotId: 'slot-1', bookingDate: '2026-03-27', participantCount: 1 },
+      user: { _id: 'user-1', roles: ['student'], status: 'active' },
+    };
+    const res = createMockRes();
+
+    await createBooking(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toMatch(/team practice booked by Badminton Captain/i);
+  });
+
   it('lists caretaker bookings scoped to assigned facilities', async () => {
+    TeamPracticeBlock.find.mockReturnValueOnce(createChain([]));
     sportsBookingFindMock.mockReturnValueOnce(createChain([
       {
         _id: 'booking-1',
