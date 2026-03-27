@@ -22,7 +22,8 @@ export const protectRoute = async (req, res, next) => {
 
 export const authorizeRoles = (...allowedRoles) => {
     return (req, res, next) => {
-        const hasRole = req.user.roles.some(role => allowedRoles.includes(role));
+        const userRoles = req.user?.roles?.length ? req.user.roles : ['student'];
+        const hasRole = userRoles.some(role => allowedRoles.includes(role));
         
         if (!hasRole) {
             return res.status(403).json({ message: "Access forbidden: insufficient permissions" });

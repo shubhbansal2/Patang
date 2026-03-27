@@ -10,6 +10,8 @@ const {
   generatePassIdMock,
   calculateEndDateMock,
   generateQRCodeMock,
+  storeSubscriptionDocumentMock,
+  streamSubscriptionDocumentMock,
   createAccessLogMock,
   getFacilityOccupancySummaryMock,
   getLatestAccessActionMock,
@@ -25,6 +27,8 @@ const {
   generatePassIdMock: vi.fn(),
   calculateEndDateMock: vi.fn(),
   generateQRCodeMock: vi.fn(),
+  storeSubscriptionDocumentMock: vi.fn(),
+  streamSubscriptionDocumentMock: vi.fn(),
   createAccessLogMock: vi.fn(),
   getFacilityOccupancySummaryMock: vi.fn(),
   getLatestAccessActionMock: vi.fn(),
@@ -49,6 +53,11 @@ vi.mock('../services/subscriptionService.js', () => ({
   generateQRCode: generateQRCodeMock,
 }));
 
+vi.mock('../services/fileStorageService.js', () => ({
+  storeSubscriptionDocument: storeSubscriptionDocumentMock,
+  streamSubscriptionDocument: streamSubscriptionDocumentMock,
+}));
+
 vi.mock('../services/accessService.js', () => ({
   createAccessLog: createAccessLogMock,
   getFacilityOccupancySummary: getFacilityOccupancySummaryMock,
@@ -61,6 +70,7 @@ vi.mock('../services/accessService.js', () => ({
 import {
   adminReview,
   apply,
+  getSubscriptionDocument,
   getOccupancySummary,
   verifyEntry,
 } from './subscriptionControllerV2.js';
@@ -72,6 +82,9 @@ describe('subscriptionControllerV2', () => {
 
   it('creates a new subscription application when no active one exists', async () => {
     subscriptionFindOneMock.mockResolvedValueOnce(null);
+    storeSubscriptionDocumentMock
+      .mockResolvedValueOnce({ fileId: 'medical-file-id' })
+      .mockResolvedValueOnce({ fileId: 'receipt-file-id' });
     subscriptionCreateMock.mockResolvedValueOnce({
       _id: 'sub-1',
       facilityType: 'Gym',
@@ -82,8 +95,8 @@ describe('subscriptionControllerV2', () => {
     const req = {
       body: { facilityType: 'Gym', plan: 'Monthly' },
       files: {
-        medicalCert: [{ path: 'uploads\\medical.pdf' }],
-        paymentReceipt: [{ path: 'uploads\\receipt.pdf' }],
+        medicalCert: [{ buffer: Buffer.from('medical'), originalname: 'medical.pdf', mimetype: 'application/pdf' }],
+        paymentReceipt: [{ buffer: Buffer.from('receipt'), originalname: 'receipt.pdf', mimetype: 'application/pdf' }],
       },
       user: { _id: 'user-1' },
     };
@@ -95,8 +108,11 @@ describe('subscriptionControllerV2', () => {
       userId: 'user-1',
       facilityType: 'Gym',
       plan: 'Monthly',
-      medicalCertUrl: 'uploads/medical.pdf',
-      paymentReceiptUrl: 'uploads/receipt.pdf',
+      _id: expect.anything(),
+      medicalCertUrl: expect.stringMatching(/^\/api\/v2\/subscriptions\/.+\/documents\/medicalCert$/),
+      medicalCertFileId: 'medical-file-id',
+      paymentReceiptUrl: expect.stringMatching(/^\/api\/v2\/subscriptions\/.+\/documents\/paymentReceipt$/),
+      paymentReceiptFileId: 'receipt-file-id',
     });
     expect(res.statusCode).toBe(201);
     expect(res.body.success).toBe(true);
@@ -108,8 +124,8 @@ describe('subscriptionControllerV2', () => {
     const req = {
       body: { facilityType: 'Gym', plan: 'Monthly' },
       files: {
-        medicalCert: [{ path: 'uploads/medical.pdf' }],
-        paymentReceipt: [{ path: 'uploads/receipt.pdf' }],
+        medicalCert: [{ buffer: Buffer.from('medical') }],
+        paymentReceipt: [{ buffer: Buffer.from('receipt') }],
       },
       user: { _id: 'user-1' },
     };
@@ -206,5 +222,34 @@ describe('subscriptionControllerV2', () => {
     expect(res.body.data.occupancy).toEqual([
       { facilityType: 'Gym', totalSlots: 100, occupiedSlots: 10, availableSlots: 90 },
     ]);
+  });
+
+  it('streams a subscription document for a scoped gym admin', async () => {
+    const pipeMock = vi.fn();
+    subscriptionFindByIdMock.mockResolvedValueOnce({
+      _id: 'sub-1',
+      userId: 'user-1',
+      facilityType: 'Gym',
+      medicalCertFileId: 'medical-file-id',
+    });
+    getScopedSubscriptionTypesMock.mockReturnValueOnce(['Gym']);
+    streamSubscriptionDocumentMock.mockResolvedValueOnce({
+      on: vi.fn(),
+      pipe: pipeMock,
+    });
+
+    const req = {
+      params: { subscriptionId: 'sub-1', documentType: 'medicalCert' },
+      user: { _id: 'gym-admin-1', roles: ['gym_admin'] },
+    };
+    const res = createMockRes();
+
+    await getSubscriptionDocument(req, res);
+
+    expect(streamSubscriptionDocumentMock).toHaveBeenCalledWith({
+      fileId: 'medical-file-id',
+      res,
+    });
+    expect(pipeMock).toHaveBeenCalledWith(res);
   });
 });

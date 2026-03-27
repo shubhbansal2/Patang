@@ -10,7 +10,7 @@ const ALLOWED_MIME_TYPES = [
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
-const storage = multer.diskStorage({
+const diskStorage = multer.diskStorage({
     destination: (req, file, cb) => {
         cb(null, 'uploads/');
     },
@@ -29,8 +29,14 @@ const fileFilter = (req, file, cb) => {
     }
 };
 
-const upload = multer({
-    storage,
+const diskUpload = multer({
+    storage: diskStorage,
+    fileFilter,
+    limits: { fileSize: MAX_FILE_SIZE }
+});
+
+const memoryUpload = multer({
+    storage: multer.memoryStorage(),
     fileFilter,
     limits: { fileSize: MAX_FILE_SIZE }
 });
@@ -38,7 +44,7 @@ const upload = multer({
 /**
  * Subscription application uploads: medicalCert + paymentReceipt
  */
-export const subscriptionUpload = upload.fields([
+export const subscriptionUpload = memoryUpload.fields([
     { name: 'medicalCert', maxCount: 1 },
     { name: 'paymentReceipt', maxCount: 1 }
 ]);
@@ -46,7 +52,7 @@ export const subscriptionUpload = upload.fields([
 /**
  * Event poster upload
  */
-export const posterUpload = upload.single('poster');
+export const posterUpload = diskUpload.single('poster');
 
 /**
  * Multer error handler middleware

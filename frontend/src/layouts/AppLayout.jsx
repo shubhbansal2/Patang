@@ -76,7 +76,7 @@ const gymAdminItems = [
   { path: '/gym-admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/gym-admin/requests', label: 'Subscription Requests', icon: ClipboardList },
   { path: '/gym-admin/scanner', label: 'QR Scanner', icon: ScanLine },
-  { path: '/feedback', label: 'Feedback', icon: MessageSquare },
+  { path: '/gym-admin/feedback', label: 'Feedback', icon: MessageSquare },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -84,7 +84,7 @@ const swimAdminItems = [
   { path: '/swim-admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/swim-admin/requests', label: 'Subscription Requests', icon: ClipboardList },
   { path: '/swim-admin/scanner', label: 'QR Scanner', icon: ScanLine },
-  { path: '/feedback', label: 'Feedback', icon: MessageSquare },
+  { path: '/swim-admin/feedback', label: 'Feedback', icon: MessageSquare },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 

@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import SubscriptionV2 from '../models/SubscriptionV2.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
 import { generatePassId, calculateEndDate, generateQRCode } from '../services/subscriptionService.js';
+import { storeSubscriptionDocument, streamSubscriptionDocument } from '../services/fileStorageService.js';
 import {
     createAccessLog,
     getFacilityOccupancySummary,
@@ -38,7 +39,7 @@ export const apply = async (req, res) => {
 
         // Import SportsSlot (inline to avoid circular dependencies if any)
         const SportsSlot = (await import('../models/SportsSlot.js')).default;
-        
+
         // 1. Get the slot
         const slot = await SportsSlot.findById(slotId).session(session);
         if (!slot) {
@@ -53,25 +54,44 @@ export const apply = async (req, res) => {
             status: { $in: ['Pending', 'Approved'] }
         }).session(session);
 
-        // 3. Atomicity check
+        // 3. Atomicity check — reject if slot is at capacity
         if (activeInSlot >= (slot.capacity || 1)) {
             await session.abortTransaction();
             session.endSession();
             return errorResponse(res, 400, 'SLOT_FULL', 'This time slot is full. No more subscriptions allowed.');
         }
 
-        // Build file URLs from multer
-        const medicalCertUrl = req.files.medicalCert[0].path.replace(/\\/g, '/');
-        const paymentReceiptUrl = req.files.paymentReceipt[0].path.replace(/\\/g, '/');
+        // 4. Upload documents to storage service
+        const medicalCertUpload = await storeSubscriptionDocument({
+            buffer: req.files.medicalCert[0].buffer,
+            filename: req.files.medicalCert[0].originalname,
+            mimeType: req.files.medicalCert[0].mimetype,
+            ownerId: userId,
+            facilityType,
+            documentType: 'medicalCert',
+        });
+        const paymentReceiptUpload = await storeSubscriptionDocument({
+            buffer: req.files.paymentReceipt[0].buffer,
+            filename: req.files.paymentReceipt[0].originalname,
+            mimeType: req.files.paymentReceipt[0].mimetype,
+            ownerId: userId,
+            facilityType,
+            documentType: 'paymentReceipt',
+        });
 
-        // Create the subscription within the transaction
+        const subscriptionId = new mongoose.Types.ObjectId();
+
+        // 5. Create subscription within the transaction
         const [subscription] = await SubscriptionV2.create([{
+            _id: subscriptionId,
             userId,
             facilityType,
             plan,
             slotId,
-            medicalCertUrl,
-            paymentReceiptUrl
+            medicalCertUrl: `/api/v2/subscriptions/${subscriptionId}/documents/medicalCert`,
+            medicalCertFileId: medicalCertUpload.fileId,
+            paymentReceiptUrl: `/api/v2/subscriptions/${subscriptionId}/documents/paymentReceipt`,
+            paymentReceiptFileId: paymentReceiptUpload.fileId
         }], { session });
 
         await session.commitTransaction();
@@ -97,9 +117,61 @@ export const apply = async (req, res) => {
 export const getMySubscriptions = async (req, res) => {
     try {
         const subscriptions = await SubscriptionV2.find({ userId: req.user._id })
+            .populate('slotId', 'startTime endTime')
             .sort({ createdAt: -1 });
 
         return successResponse(res, 200, subscriptions);
+    } catch (error) {
+        return errorResponse(res, 500, 'SERVER_ERROR', error.message);
+    }
+};
+
+/**
+ * GET /api/v2/subscriptions/:subscriptionId/documents/:documentType
+ * Stream a protected subscription document for the owner or scoped admins.
+ */
+export const getSubscriptionDocument = async (req, res) => {
+    try {
+        const { subscriptionId, documentType } = req.params;
+
+        if (!['medicalCert', 'paymentReceipt'].includes(documentType)) {
+            return errorResponse(res, 400, 'VALIDATION_ERROR', 'documentType must be medicalCert or paymentReceipt');
+        }
+
+        const subscription = await SubscriptionV2.findById(subscriptionId);
+        if (!subscription) {
+            return errorResponse(res, 404, 'NOT_FOUND', 'Subscription not found');
+        }
+
+        const isOwner = String(subscription.userId) === String(req.user._id);
+        if (!isOwner) {
+            const scopedTypes = getScopedSubscriptionTypes(req.user.roles, subscription.facilityType);
+            if (!scopedTypes.length && !req.user.roles?.includes('admin') && !req.user.roles?.includes('executive')) {
+                return errorResponse(res, 403, 'FORBIDDEN', 'You are not allowed to view this document');
+            }
+        }
+
+        const fileId = documentType === 'medicalCert'
+            ? subscription.medicalCertFileId
+            : subscription.paymentReceiptFileId;
+
+        if (!fileId) {
+            return errorResponse(res, 404, 'DOCUMENT_NOT_FOUND', 'Document file is missing');
+        }
+
+        const stream = await streamSubscriptionDocument({ fileId, res });
+        if (!stream) {
+            return errorResponse(res, 404, 'DOCUMENT_NOT_FOUND', 'Document file is missing');
+        }
+
+        stream.on('error', () => {
+            if (!res.headersSent) {
+                return errorResponse(res, 500, 'SERVER_ERROR', 'Failed to read document');
+            }
+            res.destroy();
+        });
+
+        stream.pipe(res);
     } catch (error) {
         return errorResponse(res, 500, 'SERVER_ERROR', error.message);
     }

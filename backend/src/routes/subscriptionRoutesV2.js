@@ -1,5 +1,5 @@
 import express from 'express';
-import { apply, getMySubscriptions, verifyEntry } from '../controllers/subscriptionControllerV2.js';
+import { apply, getMySubscriptions, getSubscriptionDocument, verifyEntry } from '../controllers/subscriptionControllerV2.js';
 import { protectRoute, authorizeRoles } from '../middlewares/authMiddleware.js';
 import { subscriptionUpload, handleUploadError } from '../middlewares/upload.js';
 import { validateSubscriptionApply } from '../middlewares/validate.js';
@@ -8,6 +8,7 @@ const router = express.Router();
 
 router.post('/apply', protectRoute, authorizeRoles('student', 'faculty'), subscriptionUpload, handleUploadError, validateSubscriptionApply, apply);
 router.get('/my', protectRoute, getMySubscriptions);
+router.get('/:subscriptionId/documents/:documentType', protectRoute, getSubscriptionDocument);
 router.post('/verify-entry', protectRoute, authorizeRoles('caretaker', 'admin', 'gym_admin', 'swim_admin'), verifyEntry);
 
 export default router;
