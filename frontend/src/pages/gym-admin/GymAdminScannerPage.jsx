@@ -35,7 +35,7 @@ const GymAdminScannerPage = () => {
       console.error('Scan error:', err);
       setScanResult({
         success: false,
-        error: err.response?.data?.message || 'Invalid pass or scan failed'
+        error: err.response?.data?.error?.message || err.response?.data?.message || 'Invalid pass or scan failed'
       });
     } finally {
       setLoading(false);
