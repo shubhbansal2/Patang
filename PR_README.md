@@ -1,5 +1,11 @@
 # PR README: Combined Sports Facilities, Gym Registration, and Calendar Backend
 
+## Quick Links
+
+- Local setup and test users: [LOCAL_SETUP_AND_TEST_USERS.md](/Users/aarya/repo_main/LOCAL_SETUP_AND_TEST_USERS.md)
+- Backend reference: [backend_documentation.md](/Users/aarya/repo_main/backend_documentation.md)
+- Test inventory: [TEST_INVENTORY.md](/Users/aarya/repo_main/TEST_INVENTORY.md)
+
 ## Summary
 
 This pull request combines and stabilizes the backend work for:

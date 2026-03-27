@@ -2,6 +2,10 @@
 
 This document is the consolidated and updated backend reference for Patang. It replaces the older split between the general backend document and the sports/facilities/calendar implementation note.
 
+Related docs:
+- Local setup and test users: [LOCAL_SETUP_AND_TEST_USERS.md](/Users/aarya/repo_main/LOCAL_SETUP_AND_TEST_USERS.md)
+- Test inventory: [TEST_INVENTORY.md](/Users/aarya/repo_main/TEST_INVENTORY.md)
+
 ## 1. Stack and Architecture
 
 - Runtime: Node.js
