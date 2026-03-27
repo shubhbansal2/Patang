@@ -25,6 +25,27 @@ Typical local setup:
 - frontend dev port: `4174`
 - frontend proxy target: `http://127.0.0.1:5001`
 
+### 2.1 Configure MongoDB Atlas
+
+Each teammate can use a separate MongoDB Atlas cluster.
+
+In [backend/.env](/Users/aarya/repo_main/backend/.env), set:
+
+```env
+MONGO_URI=mongodb+srv://<db_user>:<db_password>@<cluster-host>/<db-name>?appName=<app-name>
+```
+
+Example structure:
+
+```env
+MONGO_URI=mongodb+srv://my_db_user:my_db_password@cluster0.example.mongodb.net/patang?appName=Cluster0
+```
+
+Recommended:
+- use a dedicated database name like `patang`
+- keep each teammate on their own cluster or DB for isolated testing
+- rerun the seed commands after changing `MONGO_URI` so the new DB gets the required users and demo data
+
 ### 3. Start the backend
 
 ```bash
@@ -74,6 +95,16 @@ npm run seed:sports-caretakers
 npm run seed:dashboard-events
 ```
 
+Recommended order for a fresh MongoDB setup:
+
+```bash
+cd /Users/aarya/repo_main/backend
+npm run seed:dev
+npm run seed:sports-caretakers
+npm run seed:dashboard-events
+npm run repair:cloud-data
+```
+
 ## Test Users
 
 All dedicated role accounts below are active, verified, and use:
@@ -94,6 +125,10 @@ All dedicated role accounts below are active, verified, and use:
 | Swim Admin | `swimadmin@iitk.ac.in` | `69c64a7465213dd459f6ca63` | Swimming dashboard / request review / scanner |
 
 ### Sports-specific caretaker accounts
+
+The shared `caretaker@iitk.ac.in` account is currently assigned to all sports-related facilities in the shared DB for testing convenience. In production, caretakers would normally only be assigned to their own sport/facility scope.
+
+Corresponding per-sport caretaker accounts also exist.
 
 These are additionally created by `npm run seed:sports-caretakers`.
 
