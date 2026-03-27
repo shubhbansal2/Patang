@@ -115,11 +115,11 @@ export const validateAdminAction = (req, res, next) => {
  */
 export const validateSubscriptionAction = (req, res, next) => {
     const { action, rejectionReason, comments } = req.body;
-    if (!action || !['approve', 'reject'].includes(action)) {
-        return errorResponse(res, 400, 'VALIDATION_ERROR', 'action must be approve or reject');
+    if (!action || !['approve', 'reject', 'revoke'].includes(action)) {
+        return errorResponse(res, 400, 'VALIDATION_ERROR', 'action must be approve, reject, or revoke');
     }
-    if (action === 'reject' && !rejectionReason && !comments) {
-        return errorResponse(res, 400, 'VALIDATION_ERROR', 'rejectionReason or comments is required when rejecting');
+    if ((action === 'reject' || action === 'revoke') && !rejectionReason && !comments) {
+        return errorResponse(res, 400, 'VALIDATION_ERROR', `rejectionReason or comments is required when ${action === 'revoke' ? 'revoking' : 'rejecting'}`);
     }
     next();
 };
