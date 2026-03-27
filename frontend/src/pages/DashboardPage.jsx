@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import {
   Dumbbell,
   Waves,
   Calendar,
   QrCode,
-  ShieldCheck,
   X,
+  Pencil,
   CheckCircle2,
-  Clock,
   AlertTriangle,
-  CalendarDays
+  CalendarDays,
+  LoaderCircle
 } from 'lucide-react';
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -55,27 +54,54 @@ const FacilityIcon = ({ name }) => {
   return <Calendar size={20} className="text-brand-500" />;
 };
 
+const getSubscriptionPalette = (facilityType) => {
+  const lower = (facilityType || '').toLowerCase();
+  if (lower.includes('swim')) {
+    return {
+      icon: <Waves size={20} className="text-blue-500" />,
+      iconWrap: 'bg-blue-50',
+      facilityLabel: 'Swimming Pool',
+    };
+  }
+
+  return {
+    icon: <Dumbbell size={20} className="text-brand-500" />,
+    iconWrap: 'bg-brand-50',
+    facilityLabel: 'Gym',
+  };
+};
+
 /* ──────────────────────────────────────────────────────────────────────
    Dashboard Page
    ────────────────────────────────────────────────────────────────────── */
 const DashboardPage = () => {
-  const { user } = useAuth();
   const [dashboard, setDashboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [bookingCancellationId, setBookingCancellationId] = useState('');
+  const [bookingUpdateId, setBookingUpdateId] = useState('');
+  const [bookingFeedback, setBookingFeedback] = useState({ tone: '', message: '' });
 
-  useEffect(() => {
-    const fetchDashboard = async () => {
-      try {
-        const { data } = await api.get('/dashboard');
-        setDashboard(data.data);
-      } catch (err) {
-        console.error('Dashboard fetch error:', err);
-        setError(err.response?.data?.message || 'Failed to load dashboard');
-      } finally {
+  const fetchDashboard = async ({ preserveLoading = false } = {}) => {
+    if (!preserveLoading) {
+      setLoading(true);
+    }
+
+    try {
+      const { data } = await api.get('/dashboard');
+      setDashboard(data.data);
+      setError('');
+    } catch (err) {
+      console.error('Dashboard fetch error:', err);
+      setError(err.response?.data?.message || 'Failed to load dashboard');
+    } finally {
+      if (!preserveLoading) {
         setLoading(false);
       }
-    };
+    }
+  };
+
+  useEffect(() => {
     fetchDashboard();
   }, []);
 
@@ -102,8 +128,66 @@ const DashboardPage = () => {
   }
 
   const { subscriptions = [], upcomingBookings = [], fairUse = {}, penalties = {}, upcomingEvents = [] } = dashboard || {};
+  const approvedSubscription = subscriptions.find((subscription) => subscription.status === 'Approved') || null;
 
-  const activeSubscription = subscriptions[0]; // Show the first active subscription
+  const handleCancelBooking = async (booking) => {
+    const reason = window.prompt('Enter a cancellation reason for this booking:', 'Schedule conflict');
+    if (reason == null) return;
+
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) return;
+
+    setBookingCancellationId(booking._id);
+    setBookingFeedback({ tone: '', message: '' });
+
+    try {
+      if (booking.source === 'v2') {
+        await api.post(`/bookings/${booking._id}/cancel`, { reason: trimmedReason });
+      } else {
+        await api.delete(`/v2/bookings/${booking._id}`, {
+          data: { reason: trimmedReason },
+        });
+      }
+
+      await fetchDashboard({ preserveLoading: true });
+      setBookingFeedback({
+        tone: 'success',
+        message: `${booking.facilityName || 'Your facility booking'} was cancelled successfully.`,
+      });
+    } catch (err) {
+      window.alert(err.response?.data?.error?.message || err.response?.data?.message || 'Could not cancel the booking.');
+    } finally {
+      setBookingCancellationId('');
+    }
+  };
+
+  const handleModifyBooking = async (booking) => {
+    const defaultCount = String(booking.participantCount || 1);
+    const nextCount = window.prompt('Update the number of players attending:', defaultCount);
+    if (nextCount == null) return;
+
+    const participantCount = Number.parseInt(nextCount, 10);
+    if (!Number.isFinite(participantCount) || participantCount < 1) {
+      window.alert('Please enter a valid number of players.');
+      return;
+    }
+
+    setBookingUpdateId(booking._id);
+    setBookingFeedback({ tone: '', message: '' });
+
+    try {
+      await api.patch(`/bookings/${booking._id}`, { participantCount });
+      await fetchDashboard({ preserveLoading: true });
+      setBookingFeedback({
+        tone: 'success',
+        message: `${booking.facilityName || 'Your booking'} was updated to ${participantCount} player${participantCount > 1 ? 's' : ''}.`,
+      });
+    } catch (err) {
+      window.alert(err.response?.data?.message || 'Could not update the booking.');
+    } finally {
+      setBookingUpdateId('');
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -114,57 +198,80 @@ const DashboardPage = () => {
 
         {/* ── Active Subscription Card ─────────────────── */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          {activeSubscription ? (
+          {subscriptions.length > 0 ? (
             <>
-              <div className="flex items-start justify-between mb-5">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center flex-shrink-0">
-                    {activeSubscription.facilityType?.toLowerCase().includes('swim')
-                      ? <Waves size={20} className="text-blue-500" />
-                      : <Dumbbell size={20} className="text-brand-500" />
-                    }
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-gray-800">
-                      Active {activeSubscription.facilityType || 'Gym'} Subscription
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Main Sports Complex • {activeSubscription.facilityType || 'Fitness Zone'}
-                    </p>
-                  </div>
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3 className="text-base font-bold text-gray-800">Facility Subscriptions</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">Track all gym and swimming requests from one place.</p>
                 </div>
-                <StatusBadge status={activeSubscription.status} />
+                <span className="text-xs font-semibold text-gray-400">{subscriptions.length} total</span>
               </div>
 
-              {/* Details row */}
-              <div className="grid grid-cols-3 gap-4 mb-5">
-                <div className="bg-gray-50 rounded-xl px-4 py-3">
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Subscription Type</p>
-                  <p className="text-sm font-bold text-gray-800 mt-1">{activeSubscription.plan || 'Standard'}</p>
-                </div>
-                <div className="bg-gray-50 rounded-xl px-4 py-3">
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Assigned Slot</p>
-                  <p className="text-sm font-bold text-gray-800 mt-1">
-                    {activeSubscription.startDate ? formatTime(activeSubscription.startDate) : '05:00 - 06:00 PM'}
-                  </p>
-                </div>
-                <div className="bg-gray-50 rounded-xl px-4 py-3">
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Validity Period</p>
-                  <p className="text-sm font-bold text-gray-800 mt-1">
-                    Till {activeSubscription.endDate ? formatDate(activeSubscription.endDate) : 'N/A'}
-                  </p>
-                </div>
-              </div>
+              <div className="space-y-4">
+                {subscriptions.map((subscription) => {
+                  const palette = getSubscriptionPalette(subscription.facilityType);
+                  const isApproved = subscription.status === 'Approved';
 
-              {/* Action buttons */}
-              <div className="flex items-center gap-4">
-                <button className="flex items-center gap-2 bg-brand-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-brand-600 transition-colors shadow-sm">
-                  <QrCode size={16} />
-                  View Entry QR
-                </button>
-                <button className="text-sm font-semibold text-red-500 hover:text-red-600 transition-colors">
-                  Cancel Subscription
-                </button>
+                  return (
+                    <div key={subscription._id} className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
+                      <div className="flex items-start justify-between mb-4 gap-3">
+                        <div className="flex items-start gap-3">
+                          <div className={`w-10 h-10 rounded-xl ${palette.iconWrap} flex items-center justify-center flex-shrink-0`}>
+                            {palette.icon}
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-gray-800">
+                              {isApproved ? 'Active' : 'Pending'} {subscription.facilityType || palette.facilityLabel} Subscription
+                            </h4>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              Main Sports Complex • {subscription.facilityType || palette.facilityLabel}
+                            </p>
+                          </div>
+                        </div>
+                        <StatusBadge status={subscription.status} />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="bg-white rounded-xl px-4 py-3 border border-gray-100">
+                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Subscription Type</p>
+                          <p className="text-sm font-bold text-gray-800 mt-1">{subscription.plan || 'Standard'}</p>
+                        </div>
+                        <div className="bg-white rounded-xl px-4 py-3 border border-gray-100">
+                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
+                            {isApproved ? 'Assigned Slot' : 'Application Status'}
+                          </p>
+                          <p className="text-sm font-bold text-gray-800 mt-1">
+                            {isApproved
+                              ? (subscription.startDate ? formatTime(subscription.startDate) : '—')
+                              : 'Awaiting approval'}
+                          </p>
+                        </div>
+                        <div className="bg-white rounded-xl px-4 py-3 border border-gray-100">
+                          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Validity Period</p>
+                          <p className="text-sm font-bold text-gray-800 mt-1">
+                            {isApproved
+                              ? `Till ${subscription.endDate ? formatDate(subscription.endDate) : 'N/A'}`
+                              : 'Starts after approval'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {isApproved ? (
+                        <div className="mt-4 flex items-center gap-4">
+                          <button className="flex items-center gap-2 bg-brand-500 text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-brand-600 transition-colors shadow-sm">
+                            <QrCode size={16} />
+                            View Entry QR
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                          Your subscription request is pending review. Entry QR and validity dates will appear after approval.
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </>
           ) : (
@@ -185,6 +292,16 @@ const DashboardPage = () => {
             </button>
           </div>
 
+          {bookingFeedback.message ? (
+            <div className={`mb-4 rounded-xl border px-4 py-3 text-sm ${
+              bookingFeedback.tone === 'success'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                : 'border-gray-200 bg-gray-50 text-gray-700'
+            }`}>
+              {bookingFeedback.message}
+            </div>
+          ) : null}
+
           {upcomingBookings.length > 0 ? (
             <div className="space-y-3">
               {upcomingBookings.slice(0, 5).map((booking) => (
@@ -199,12 +316,34 @@ const DashboardPage = () => {
                         <Calendar size={12} />
                         {formatDate(booking.slotStart)} • {formatTime(booking.slotStart)}
                       </p>
+                      {booking.source === 'v2' ? (
+                        <p className="mt-1 text-xs text-gray-500">
+                          Players attending: {booking.participantCount || 1}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <StatusBadge status={booking.status} />
-                    <button className="w-7 h-7 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition-colors">
-                      <X size={14} />
+                    {booking.source === 'v2' ? (
+                      <button
+                        type="button"
+                        onClick={() => handleModifyBooking(booking)}
+                        disabled={bookingUpdateId === booking._id}
+                        className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-200 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {bookingUpdateId === booking._id ? <LoaderCircle size={12} className="animate-spin" /> : <Pencil size={12} />}
+                        Modify
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => handleCancelBooking(booking)}
+                      disabled={bookingCancellationId === booking._id || bookingUpdateId === booking._id}
+                      className="w-7 h-7 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center transition-colors"
+                      aria-label={`Cancel booking for ${booking.facilityName || 'facility'}`}
+                    >
+                      {bookingCancellationId === booking._id ? <LoaderCircle size={14} className="animate-spin" /> : <X size={14} />}
                     </button>
                   </div>
                 </div>
@@ -230,13 +369,15 @@ const DashboardPage = () => {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center">
           <h3 className="text-sm font-bold text-gray-800 mb-4">Digital Entry Pass</h3>
           <div className="w-32 h-32 mx-auto bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center mb-3">
-            {activeSubscription?.qrCode ? (
-              <img src={activeSubscription.qrCode} alt="QR Code" className="w-28 h-28 object-contain" />
+            {approvedSubscription?.qrCode ? (
+              <img src={approvedSubscription.qrCode} alt="QR Code" className="w-28 h-28 object-contain" />
             ) : (
               <QrCode size={48} className="text-gray-300" />
             )}
           </div>
-          <p className="text-xs text-gray-400">Click to expand for scanning</p>
+          <p className="text-xs text-gray-400">
+            {approvedSubscription ? 'Click to expand for scanning' : (subscriptions.length > 0 ? 'QR becomes available after approval' : 'No active pass yet')}
+          </p>
         </div>
 
         {/* ── Upcoming Events ─────────────────────────── */}

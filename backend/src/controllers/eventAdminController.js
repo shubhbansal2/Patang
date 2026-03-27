@@ -7,7 +7,7 @@ import { successResponse, errorResponse } from '../utils/apiResponse.js';
  */
 export const getPendingEvents = async (req, res) => {
     try {
-        const events = await Event.find({ status: 'Pending' })
+        const events = await Event.find({ status: 'Pending', endTime: { $gte: new Date() } })
             .populate('createdBy', 'name email')
             .sort({ createdAt: 1 });
 

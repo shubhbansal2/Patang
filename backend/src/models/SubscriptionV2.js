@@ -50,7 +50,6 @@ const subscriptionV2Schema = new mongoose.Schema({
     },
     passId: {
         type: String,
-        default: null,
         unique: true,
         sparse: true
     },

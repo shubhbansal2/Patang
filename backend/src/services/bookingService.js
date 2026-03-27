@@ -1,5 +1,6 @@
 import Penalty from '../models/Penalty.js';
 import Booking from '../models/Booking.js';
+import SportsBooking from '../models/SportsBooking.js';
 import TimeSlot from '../models/TimeSlot.js';
 
 const FAIR_USE_WINDOW_MS = 72 * 60 * 60 * 1000; // 72 hours
@@ -24,11 +25,21 @@ export const checkUserSuspension = async (userId) => {
  */
 export const checkFairUseQuota = async (userId) => {
     const windowStart = new Date(Date.now() - FAIR_USE_WINDOW_MS);
-    const count = await Booking.countDocuments({
-        userId,
-        status: { $in: ['Confirmed', 'Provisioned'] },
-        bookingDate: { $gte: windowStart }
-    });
+    const now = new Date();
+    const [legacyCount, sportsCount] = await Promise.all([
+        Booking.countDocuments({
+            userId,
+            status: { $in: ['Confirmed', 'Provisioned'] },
+            bookingDate: { $gte: windowStart }
+        }),
+        SportsBooking.countDocuments({
+            user: userId,
+            slotStartAt: { $gte: windowStart },
+            slotEndAt: { $gte: now },
+            status: { $in: ['confirmed', 'group_pending'] }
+        })
+    ]);
+    const count = legacyCount + sportsCount;
     return { count, allowed: count < MAX_ACTIVE_BOOKINGS };
 };
 

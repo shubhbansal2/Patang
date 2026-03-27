@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import ProtectedRoute, { getRoleHome } from './components/ProtectedRoute';
+import { ToastProvider } from './components/ui/ToastContainer';
+import ProtectedRoute, { getDefaultRoute } from './components/ProtectedRoute';
 import AppLayout from './layouts/AppLayout';
 
 // Auth pages
@@ -10,6 +11,7 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 
 // User portal pages
 import DashboardPage from './pages/DashboardPage';
+import CaptainDashboardPage from './pages/captain/CaptainDashboardPage';
 import SlotBookingPage from './pages/SlotBookingPage';
 import HistoryPage from './pages/HistoryPage';
 import CalendarPage from './pages/CalendarPage';
@@ -19,6 +21,7 @@ import SettingsPage from './pages/SettingsPage';
 // Coordinator pages
 import CoordinatorEventsPage from './pages/coordinator/CoordinatorEventsPage';
 import CoordinatorVenuesPage from './pages/coordinator/CoordinatorVenuesPage';
+import SportsCaretakerPage from './pages/caretaker/SportsCaretakerPage';
 
 // Executive pages
 import ExecutiveDashboardPage from './pages/executive/ExecutiveDashboardPage';
@@ -43,82 +46,90 @@ import SwimAdminDashboardPage from './pages/swim-admin/SwimAdminDashboardPage';
 import SwimAdminRequestsPage from './pages/swim-admin/SwimAdminRequestsPage';
 import SwimAdminScannerPage from './pages/swim-admin/SwimAdminScannerPage';
 
-/**
- * Smart root redirect — sends user to their role-specific dashboard.
- */
-const RoleRedirect = () => {
-  const { user, isAuthenticated } = useAuth();
+const HomeRedirect = () => {
+  const { isAuthenticated, user } = useAuth();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return <Navigate to={getRoleHome(user)} replace />;
+  return <Navigate to={getDefaultRoute(user)} replace />;
 };
 
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <ToastProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-          {/* ─── Student / General User Routes ─────────────────────────
-               gym_admin and swim_admin are EXCLUDED from these routes.
-               They are operational logins, not student accounts.
-          ───────────────────────────────────────────────────────── */}
-          <Route element={<ProtectedRoute allowedRoles={['student', 'faculty', 'coordinator', 'executive', 'admin']} />}>
-            <Route path="/dashboard" element={<AppLayout><DashboardPage /></AppLayout>} />
-            <Route path="/slot-booking" element={<AppLayout><SlotBookingPage /></AppLayout>} />
-            <Route path="/history" element={<AppLayout><HistoryPage /></AppLayout>} />
-            <Route path="/calendar" element={<AppLayout><CalendarPage /></AppLayout>} />
-          </Route>
+            {/* Captain Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['captain', 'admin', 'executive']} />}>
+              <Route path="/captain/dashboard" element={<AppLayout><CaptainDashboardPage /></AppLayout>} />
+            </Route>
 
-          {/* ─── Shared Routes (all authenticated users) ──────────── */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/feedback" element={<AppLayout><FeedbackPage /></AppLayout>} />
-            <Route path="/settings" element={<AppLayout><SettingsPage /></AppLayout>} />
-          </Route>
+            {/* ─── Student / General User Routes ─────────────────────────
+                 gym_admin and swim_admin are EXCLUDED from these routes.
+            ───────────────────────────────────────────────────────── */}
+            <Route element={<ProtectedRoute allowedRoles={['student', 'faculty', 'coordinator', 'captain', 'executive', 'admin']} />}>
+              <Route path="/dashboard" element={<AppLayout><DashboardPage /></AppLayout>} />
+              <Route path="/slot-booking" element={<AppLayout><SlotBookingPage /></AppLayout>} />
+              <Route path="/history" element={<AppLayout><HistoryPage /></AppLayout>} />
+              <Route path="/calendar" element={<AppLayout><CalendarPage /></AppLayout>} />
+            </Route>
 
-          {/* Coordinator Routes */}
-          <Route element={<ProtectedRoute allowedRoles={['coordinator', 'executive', 'admin']} />}>
-            <Route path="/coordinator/events" element={<AppLayout><CoordinatorEventsPage /></AppLayout>} />
-            <Route path="/coordinator/venues" element={<AppLayout><CoordinatorVenuesPage /></AppLayout>} />
-          </Route>
+            {/* ─── Shared Routes (all authenticated users) ──────────── */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/feedback" element={<AppLayout><FeedbackPage /></AppLayout>} />
+              <Route path="/settings" element={<AppLayout><SettingsPage /></AppLayout>} />
+            </Route>
 
-          {/* Executive Routes */}
-          <Route element={<ProtectedRoute allowedRoles={['executive', 'admin']} />}>
-            <Route path="/executive/dashboard" element={<AppLayout><ExecutiveDashboardPage /></AppLayout>} />
-            <Route path="/executive/calendar" element={<AppLayout><CalendarManagementPage /></AppLayout>} />
-            <Route path="/executive/coordinators" element={<AppLayout><CoordinatorAccessPage /></AppLayout>} />
-            <Route path="/executive/approvals" element={<AppLayout><BookingApprovalsPage /></AppLayout>} />
-            <Route path="/executive/feedback" element={<AppLayout><FeedbackReportsPage /></AppLayout>} />
-            <Route path="/executive/analytics" element={<AppLayout><AnalyticsPage /></AppLayout>} />
-            <Route path="/executive/audit-log" element={<AppLayout><AuditLogPage /></AppLayout>} />
-            <Route path="/executive/users" element={<AppLayout><UserManagementPage /></AppLayout>} />
-            <Route path="/executive/facilities" element={<AppLayout><FacilityManagementPage /></AppLayout>} />
-            <Route path="/executive/penalties" element={<AppLayout><PenaltyManagementPage /></AppLayout>} />
-            <Route path="/executive/settings" element={<AppLayout><ExecutiveSettingsPage /></AppLayout>} />
-          </Route>
+            {/* Coordinator Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['coordinator', 'executive', 'admin']} />}>
+              <Route path="/coordinator/events" element={<AppLayout><CoordinatorEventsPage /></AppLayout>} />
+              <Route path="/coordinator/venues" element={<AppLayout><CoordinatorVenuesPage /></AppLayout>} />
+            </Route>
 
-          {/* Gym Admin Routes — gym_admin only */}
-          <Route element={<ProtectedRoute allowedRoles={['gym_admin']} />}>
-            <Route path="/gym-admin/dashboard" element={<AppLayout><GymAdminDashboardPage /></AppLayout>} />
-            <Route path="/gym-admin/requests" element={<AppLayout><GymAdminRequestsPage /></AppLayout>} />
-            <Route path="/gym-admin/scanner" element={<AppLayout><GymAdminScannerPage /></AppLayout>} />
-          </Route>
+            {/* Caretaker Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['caretaker', 'executive', 'admin']} />}>
+              <Route path="/caretaker/sports" element={<AppLayout><SportsCaretakerPage /></AppLayout>} />
+            </Route>
 
-          {/* Swim Admin Routes — swim_admin only */}
-          <Route element={<ProtectedRoute allowedRoles={['swim_admin']} />}>
-            <Route path="/swim-admin/dashboard" element={<AppLayout><SwimAdminDashboardPage /></AppLayout>} />
-            <Route path="/swim-admin/requests" element={<AppLayout><SwimAdminRequestsPage /></AppLayout>} />
-            <Route path="/swim-admin/scanner" element={<AppLayout><SwimAdminScannerPage /></AppLayout>} />
-          </Route>
+            {/* Executive Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['executive', 'admin']} />}>
+              <Route path="/executive/dashboard" element={<AppLayout><ExecutiveDashboardPage /></AppLayout>} />
+              <Route path="/executive/calendar" element={<AppLayout><CalendarManagementPage /></AppLayout>} />
+              <Route path="/executive/coordinators" element={<AppLayout><CoordinatorAccessPage /></AppLayout>} />
+              <Route path="/executive/approvals" element={<AppLayout><BookingApprovalsPage /></AppLayout>} />
+              <Route path="/executive/feedback" element={<AppLayout><FeedbackReportsPage /></AppLayout>} />
+              <Route path="/executive/analytics" element={<AppLayout><AnalyticsPage /></AppLayout>} />
+              <Route path="/executive/audit-log" element={<AppLayout><AuditLogPage /></AppLayout>} />
+              <Route path="/executive/users" element={<AppLayout><UserManagementPage /></AppLayout>} />
+              <Route path="/executive/facilities" element={<AppLayout><FacilityManagementPage /></AppLayout>} />
+              <Route path="/executive/penalties" element={<AppLayout><PenaltyManagementPage /></AppLayout>} />
+              <Route path="/executive/settings" element={<AppLayout><ExecutiveSettingsPage /></AppLayout>} />
+            </Route>
 
-          {/* Root + catch-all: role-aware redirect */}
-          <Route path="/" element={<RoleRedirect />} />
-          <Route path="*" element={<RoleRedirect />} />
-        </Routes>
-      </BrowserRouter>
+            {/* Gym Admin Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['gym_admin']} />}>
+              <Route path="/gym-admin/dashboard" element={<AppLayout><GymAdminDashboardPage /></AppLayout>} />
+              <Route path="/gym-admin/requests" element={<AppLayout><GymAdminRequestsPage /></AppLayout>} />
+              <Route path="/gym-admin/scanner" element={<AppLayout><GymAdminScannerPage /></AppLayout>} />
+            </Route>
+
+            {/* Swim Admin Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['swim_admin']} />}>
+              <Route path="/swim-admin/dashboard" element={<AppLayout><SwimAdminDashboardPage /></AppLayout>} />
+              <Route path="/swim-admin/requests" element={<AppLayout><SwimAdminRequestsPage /></AppLayout>} />
+              <Route path="/swim-admin/scanner" element={<AppLayout><SwimAdminScannerPage /></AppLayout>} />
+            </Route>
+
+            {/* Root redirect */}
+            <Route path="/" element={<HomeRedirect />} />
+            <Route path="*" element={<HomeRedirect />} />
+          </Routes>
+        </BrowserRouter>
+      </ToastProvider>
     </AuthProvider>
   );
 }

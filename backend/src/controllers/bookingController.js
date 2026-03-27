@@ -2,6 +2,8 @@ import Facility from '../models/Facility.js';
 import SportsSlot from '../models/SportsSlot.js';
 import FacilityBlock from '../models/FacilityBlock.js';
 import SportsBooking from '../models/SportsBooking.js';
+import User from '../models/User.js';
+import mongoose from 'mongoose';
 
 const ACTIVE_BOOKING_STATUSES = ['confirmed', 'group_pending', 'waitlisted'];
 const CANCELLABLE_STATUSES = ['confirmed', 'group_pending', 'waitlisted'];
@@ -37,6 +39,60 @@ const canUserAccessFacility = (facility, userRoles) => {
     return userRoles.some((role) => facility.allowedRoles.includes(role));
 };
 
+const getBookingParticipantCount = (booking) => {
+    if (typeof booking?.participantCount === 'number' && booking.participantCount > 0) {
+        return booking.participantCount;
+    }
+
+    if (Array.isArray(booking?.participants) && booking.participants.length > 0) {
+        return booking.participants.length;
+    }
+
+    return 1;
+};
+
+const getDateRange = (dateInput) => {
+    const date = dateInput ? new Date(dateInput) : new Date();
+
+    if (Number.isNaN(date.getTime())) {
+        return null;
+    }
+
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    return { start, end };
+};
+
+const getCaretakerFacilityFilter = (req) => {
+    if (req.user.roles?.some((role) => ['admin', 'executive'].includes(role))) {
+        return null;
+    }
+
+    const assignedFacilities = req.user.profileDetails?.assignedFacilities || [];
+    return assignedFacilities.length ? assignedFacilities : [];
+};
+
+const findUserByIdentifier = async (identifier) => {
+    if (!identifier) {
+        return null;
+    }
+
+    const orConditions = [
+        { email: identifier },
+        { 'profileDetails.rollNumber': identifier }
+    ];
+
+    if (mongoose.Types.ObjectId.isValid(identifier)) {
+        orConditions.unshift({ _id: identifier });
+    }
+
+    return User.findOne({ $or: orConditions }).select('name email profileDetails');
+};
+
 export const checkAvailability = async (req, res) => {
     try {
         const { slotId, bookingDate } = req.query;
@@ -58,15 +114,15 @@ export const checkAvailability = async (req, res) => {
             return res.status(400).json({ message: 'Invalid slot date/time combination' });
         }
 
-        const [activeBookings, quotaUsage, activeBlock] = await Promise.all([
-            SportsBooking.countDocuments({
+        const [existingBookings, quotaUsage, activeBlock] = await Promise.all([
+            SportsBooking.find({
                 slot: slot._id,
                 bookingDate: {
                     $gte: new Date(new Date(bookingDate).setHours(0, 0, 0, 0)),
                     $lte: new Date(new Date(bookingDate).setHours(23, 59, 59, 999))
                 },
                 status: { $in: ACTIVE_BOOKING_STATUSES }
-            }),
+            }).select('participantCount participants'),
             SportsBooking.countDocuments({
                 user: req.user._id,
                 slotStartAt: getQuotaWindow(slotStartAt),
@@ -79,6 +135,8 @@ export const checkAvailability = async (req, res) => {
                 endTime: { $gt: slotStartAt }
             })
         ]);
+
+        const activeBookings = existingBookings.reduce((sum, booking) => sum + getBookingParticipantCount(booking), 0);
 
         res.json({
             facility: slot.facility,
@@ -99,7 +157,7 @@ export const checkAvailability = async (req, res) => {
 
 export const createBooking = async (req, res) => {
     try {
-        const { slotId, bookingDate, isGroupBooking = false, participantIds = [] } = req.body;
+        const { slotId, bookingDate, isGroupBooking = false, participantIds = [], participantCount: rawParticipantCount } = req.body;
 
         if (!slotId || !bookingDate) {
             return res.status(400).json({ message: 'slotId and bookingDate are required' });
@@ -134,7 +192,18 @@ export const createBooking = async (req, res) => {
             return res.status(400).json({ message: 'Invalid slot date/time combination' });
         }
 
-        const [quotaUsage, activeBlock, activeBookings, existingBooking] = await Promise.all([
+        const normalizedParticipantCount = Number.parseInt(rawParticipantCount, 10);
+        const participantCount = Number.isFinite(normalizedParticipantCount) ? normalizedParticipantCount : 1;
+
+        if (participantCount < 1) {
+            return res.status(400).json({ message: 'participantCount must be at least 1' });
+        }
+
+        if (participantCount > slot.capacity) {
+            return res.status(400).json({ message: 'participantCount cannot exceed the slot capacity' });
+        }
+
+        const [quotaUsage, activeBlock, existingBookings, existingBooking] = await Promise.all([
             SportsBooking.countDocuments({
                 user: req.user._id,
                 slotStartAt: getQuotaWindow(slotStartAt),
@@ -146,14 +215,14 @@ export const createBooking = async (req, res) => {
                 startTime: { $lt: slotEndAt },
                 endTime: { $gt: slotStartAt }
             }),
-            SportsBooking.countDocuments({
+            SportsBooking.find({
                 slot: slot._id,
                 bookingDate: {
                     $gte: new Date(new Date(bookingDate).setHours(0, 0, 0, 0)),
                     $lte: new Date(new Date(bookingDate).setHours(23, 59, 59, 999))
                 },
                 status: { $in: ACTIVE_BOOKING_STATUSES }
-            }),
+            }).select('participantCount participants'),
             SportsBooking.findOne({
                 user: req.user._id,
                 slot: slot._id,
@@ -173,7 +242,9 @@ export const createBooking = async (req, res) => {
             return res.status(400).json({ message: `Slot unavailable due to ${activeBlock.reason}` });
         }
 
-        if (activeBookings >= slot.capacity) {
+        const activeBookings = existingBookings.reduce((sum, booking) => sum + getBookingParticipantCount(booking), 0);
+
+        if (activeBookings + participantCount > slot.capacity) {
             return res.status(400).json({ message: 'Selected slot is already full' });
         }
 
@@ -182,7 +253,7 @@ export const createBooking = async (req, res) => {
         }
 
         const participants = [...new Set([String(req.user._id), ...participantIds.map(String)])];
-        const minPlayersRequired = isGroupBooking ? Math.max(slot.minPlayersRequired, participants.length) : 1;
+        const minPlayersRequired = isGroupBooking ? Math.max(slot.minPlayersRequired, participantCount) : participantCount;
 
         const booking = await SportsBooking.create({
             user: req.user._id,
@@ -194,6 +265,7 @@ export const createBooking = async (req, res) => {
             status: isGroupBooking ? 'group_pending' : 'confirmed',
             isGroupBooking,
             minPlayersRequired,
+            participantCount,
             participants
         });
 
@@ -218,6 +290,185 @@ export const listMyBookings = async (req, res) => {
         res.json(bookings);
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+export const listBookingsForCaretaker = async (req, res) => {
+    try {
+        const { facilityId, status, date, sportType } = req.query;
+        const facilityScope = getCaretakerFacilityFilter(req);
+        const dateRange = getDateRange(date);
+
+        if (!dateRange) {
+            return res.status(400).json({ message: 'date must be a valid ISO date' });
+        }
+
+        const query = {
+            slotStartAt: { $gte: dateRange.start, $lte: dateRange.end },
+            status: status || { $in: ['confirmed', 'group_pending'] }
+        };
+
+        if (facilityId) {
+            query.facility = facilityId;
+        } else if (facilityScope) {
+            query.facility = { $in: facilityScope };
+        }
+
+        const bookings = await SportsBooking.find(query)
+            .populate('facility', 'name location sportType capacity')
+            .populate('slot', 'startTime endTime capacity minPlayersRequired')
+            .populate('user', 'name email profileDetails.rollNumber profileDetails.department')
+            .sort({ slotStartAt: 1 });
+
+        const normalizedBookings = bookings
+            .filter((booking) => !sportType || booking.facility?.sportType === sportType)
+            .map((booking) => ({
+                _id: booking._id,
+                status: booking.status,
+                attendanceStatus: booking.attendanceStatus,
+                slotStartAt: booking.slotStartAt,
+                slotEndAt: booking.slotEndAt,
+                participantCount: getBookingParticipantCount(booking),
+                isGroupBooking: booking.isGroupBooking,
+                facility: booking.facility,
+                slot: booking.slot,
+                bookedBy: booking.user,
+            }));
+
+        return res.json({ bookings: normalizedBookings });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+export const verifyAttendeeForCaretaker = async (req, res) => {
+    try {
+        const { identifier, bookingId } = req.body;
+
+        if (!identifier) {
+            return res.status(400).json({ message: 'identifier is required' });
+        }
+
+        const user = await findUserByIdentifier(identifier);
+        if (!user) {
+            return res.json({
+                valid: false,
+                reason: 'No user found for the provided identifier'
+            });
+        }
+
+        const query = {
+            status: { $in: ['confirmed', 'group_pending'] },
+            user: user._id
+        };
+
+        if (bookingId) {
+            query._id = bookingId;
+        }
+
+        const facilityScope = getCaretakerFacilityFilter(req);
+        if (facilityScope) {
+            query.facility = { $in: facilityScope };
+        }
+
+        const booking = await SportsBooking.findOne(query)
+            .populate('facility', 'name sportType location')
+            .populate('slot', 'startTime endTime')
+            .populate('user', 'name email profileDetails.rollNumber');
+
+        if (!booking) {
+            return res.json({
+                valid: false,
+                user: {
+                    _id: user._id,
+                    name: user.name,
+                    email: user.email,
+                    rollNumber: user.profileDetails?.rollNumber || null
+                },
+                reason: 'No active sports booking matched the provided identifier'
+            });
+        }
+
+        return res.json({
+            valid: true,
+            booking: {
+                _id: booking._id,
+                status: booking.status,
+                attendanceStatus: booking.attendanceStatus,
+                slotStartAt: booking.slotStartAt,
+                slotEndAt: booking.slotEndAt,
+                participantCount: getBookingParticipantCount(booking),
+                facility: booking.facility,
+                slot: booking.slot,
+                bookedBy: booking.user,
+            }
+        });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+export const updateBooking = async (req, res) => {
+    try {
+        const booking = await SportsBooking.findById(req.params.id)
+            .populate('slot')
+            .populate('facility');
+
+        if (!booking) {
+            return res.status(404).json({ message: 'Booking not found' });
+        }
+
+        const isOwner = String(booking.user) === String(req.user._id);
+        const isPrivileged = req.user.roles.some((role) => ['caretaker', 'admin', 'executive'].includes(role));
+
+        if (!isOwner && !isPrivileged) {
+            return res.status(403).json({ message: 'You are not allowed to modify this booking' });
+        }
+
+        if (!ACTIVE_BOOKING_STATUSES.includes(booking.status)) {
+            return res.status(400).json({ message: 'This booking can no longer be modified' });
+        }
+
+        const normalizedParticipantCount = Number.parseInt(req.body.participantCount, 10);
+        const participantCount = Number.isFinite(normalizedParticipantCount)
+            ? normalizedParticipantCount
+            : getBookingParticipantCount(booking);
+
+        if (participantCount < 1) {
+            return res.status(400).json({ message: 'participantCount must be at least 1' });
+        }
+
+        const slotCapacity = booking.slot?.capacity || booking.facility?.capacity || 1;
+        if (participantCount > slotCapacity) {
+            return res.status(400).json({ message: 'participantCount cannot exceed the slot capacity' });
+        }
+
+        const existingBookings = await SportsBooking.find({
+            slot: booking.slot._id,
+            bookingDate: {
+                $gte: new Date(new Date(booking.bookingDate).setHours(0, 0, 0, 0)),
+                $lte: new Date(new Date(booking.bookingDate).setHours(23, 59, 59, 999))
+            },
+            status: { $in: ACTIVE_BOOKING_STATUSES },
+            _id: { $ne: booking._id }
+        }).select('participantCount participants');
+
+        const otherParticipants = existingBookings.reduce((sum, existingBooking) => sum + getBookingParticipantCount(existingBooking), 0);
+
+        if (otherParticipants + participantCount > slotCapacity) {
+            return res.status(400).json({ message: 'Not enough capacity left for that many players' });
+        }
+
+        booking.participantCount = participantCount;
+        booking.minPlayersRequired = booking.isGroupBooking
+            ? Math.max(booking.slot?.minPlayersRequired || 1, participantCount)
+            : participantCount;
+
+        await booking.save();
+
+        return res.json(booking);
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
     }
 };
 

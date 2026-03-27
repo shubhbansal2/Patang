@@ -21,6 +21,8 @@ export const getDashboard = async (req, res) => {
 
         const userId = req.user._id;
         const now = new Date();
+        const startOfToday = new Date(now);
+        startOfToday.setHours(0, 0, 0, 0);
 
         // ── Rolling 72-hour window boundary (for fair-use calculation) ──
         const windowStart = new Date(now.getTime() - 72 * 60 * 60 * 1000);
@@ -49,10 +51,11 @@ export const getDashboard = async (req, res) => {
             // 2a. Upcoming sports-facility bookings (v2 model)
             SportsBooking.find({
                 user: userId,
-                slotStartAt: { $gte: now },
+                bookingDate: { $gte: startOfToday },
                 status: { $in: ['confirmed', 'group_pending'] }
             })
-                .populate('facility', 'name location sportType facilityType')
+                .populate('facility', 'name location sportType facilityType capacity')
+                .populate('slot', 'capacity minPlayersRequired')
                 .sort({ slotStartAt: 1 })
                 .maxTimeMS(5000)
                 .limit(10)
@@ -61,7 +64,7 @@ export const getDashboard = async (req, res) => {
             // 2b. Upcoming bookings (v1 model)
             Booking.find({
                 userId,
-                slotDate: { $gte: now },
+                slotDate: { $gte: startOfToday },
                 status: { $in: ['Confirmed', 'Provisioned'] }
             })
                 .populate('facilityId', 'name location sportType facilityType')
@@ -74,6 +77,7 @@ export const getDashboard = async (req, res) => {
             SportsBooking.countDocuments({
                 user: userId,
                 slotStartAt: { $gte: windowStart },
+                slotEndAt: { $gte: now },
                 status: { $in: ['confirmed', 'group_pending'] }
             }),
 
@@ -122,6 +126,11 @@ export const getDashboard = async (req, res) => {
                 slotEnd: b.slotEndAt,
                 status: b.status,
                 isGroupBooking: b.isGroupBooking,
+                participantCount: typeof b.participantCount === 'number'
+                    ? b.participantCount
+                    : Math.max(1, b.participants?.length || 1),
+                capacity: b.slot?.capacity ?? b.facility?.capacity ?? null,
+                minPlayersRequired: b.slot?.minPlayersRequired ?? 1,
                 source: 'v2'
             })),
             ...v1Bookings.map(b => ({
@@ -170,6 +179,7 @@ export const getDashboard = async (req, res) => {
             name: req.user.name,
             email: req.user.email,
             roles: req.user.roles,
+            captainOf: req.user.captainOf,
             profileDetails: req.user.profileDetails ?? {}
         };
 

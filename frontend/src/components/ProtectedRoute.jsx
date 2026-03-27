@@ -1,13 +1,15 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-/**
- * Returns the correct home path for a given user based on their primary role.
- */
-const getRoleHome = (user) => {
-  if (user?.roles?.includes('gym_admin')) return '/gym-admin/dashboard';
-  if (user?.roles?.includes('swim_admin')) return '/swim-admin/dashboard';
-  if (user?.roles?.includes('executive') || user?.roles?.includes('admin')) return '/executive/dashboard';
+const getDefaultRoute = (user) => {
+  const roles = user?.roles || [];
+
+  if (roles.includes('executive') || roles.includes('admin')) return '/executive/dashboard';
+  if (roles.includes('gym_admin')) return '/gym-admin/dashboard';
+  if (roles.includes('swim_admin')) return '/swim-admin/dashboard';
+  if (roles.includes('captain')) return '/captain/dashboard';
+  if (roles.includes('coordinator')) return '/coordinator/events';
+  if (roles.includes('caretaker')) return '/caretaker/sports';
   return '/dashboard';
 };
 
@@ -22,12 +24,12 @@ const ProtectedRoute = ({ allowedRoles }) => {
     const userRoles = user?.roles?.length ? user.roles : ['student'];
     const hasRole = userRoles.some(r => allowedRoles.includes(r));
     if (!hasRole) {
-      return <Navigate to={getRoleHome(user)} replace />;
+      return <Navigate to={getDefaultRoute(user)} replace />;
     }
   }
 
   return <Outlet />;
 };
 
-export { getRoleHome };
+export { getDefaultRoute };
 export default ProtectedRoute;

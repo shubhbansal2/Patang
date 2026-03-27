@@ -95,6 +95,7 @@ export const getSlotTone = (status) => {
   if (value === 'group open') return 'warning';
   if (value === 'fully booked') return 'danger';
   if (value === 'team practice') return 'neutral';
+  if (value === 'unavailable') return 'info';
 
   return 'info';
 };

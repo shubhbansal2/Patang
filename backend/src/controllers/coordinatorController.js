@@ -36,8 +36,11 @@ export const getEventManagementPage = async (req, res) => {
         const pageNum = Math.max(1, parseInt(page) || 1);
         const limitNum = Math.min(50, Math.max(1, parseInt(limit) || 10));
 
-        // Build query — always scoped to the coordinator's own events
-        const eventQuery = { createdBy: userId };
+        // Build query — always scoped to the coordinator's own events, and must not be completely in the past
+        const eventQuery = { 
+            createdBy: userId,
+            endTime: { $gte: new Date() } // Do not show events that have already ended
+        };
         if (status) eventQuery.status = status;
 
         const [events, total, statsCounts] = await Promise.all([

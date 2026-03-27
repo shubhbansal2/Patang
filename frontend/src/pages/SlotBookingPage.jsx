@@ -164,11 +164,11 @@ const SlotBookingPage = () => {
     loadSports(nextFilters, { background: Boolean(sportsData) });
   };
 
-  const handleSportsBooking = async ({ slotId, bookingDate, isGroupBooking }) => {
+  const handleSportsBooking = async ({ slotId, bookingDate, isGroupBooking, participantCount }) => {
     setSportsSubmission({ submitting: true, success: '', error: '' });
 
     try {
-      await createSportsBooking({ slotId, bookingDate, isGroupBooking });
+      await createSportsBooking({ slotId, bookingDate, isGroupBooking, participantCount });
       setSportsSubmission({
         submitting: false,
         success: 'Your booking was created successfully. The slot grid has been refreshed.',

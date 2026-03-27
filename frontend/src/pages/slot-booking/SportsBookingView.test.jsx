@@ -69,6 +69,7 @@ describe('SportsBookingView', () => {
       slotId: 'slot-1',
       bookingDate: '2026-03-26',
       isGroupBooking: false,
+      participantCount: 2,
     });
   });
 
@@ -84,6 +85,23 @@ describe('SportsBookingView', () => {
       slotId: 'slot-1',
       bookingDate: '2026-03-26',
       isGroupBooking: true,
+      participantCount: 2,
+    });
+  });
+
+  it('lets the user choose how many players they are bringing', async () => {
+    const user = userEvent.setup();
+    const props = renderView();
+
+    await user.click(screen.getByRole('button', { name: /select slot badminton court 1/i }));
+    await user.selectOptions(screen.getByLabelText(/players coming/i), '4');
+    await user.click(screen.getByRole('button', { name: /confirm booking/i }));
+
+    expect(props.onCreateBooking).toHaveBeenCalledWith({
+      slotId: 'slot-1',
+      bookingDate: '2026-03-26',
+      isGroupBooking: false,
+      participantCount: 4,
     });
   });
 
@@ -105,5 +123,60 @@ describe('SportsBookingView', () => {
 
     expect(screen.getByText(/booking quota reached/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /confirm booking/i })).toBeDisabled();
+  });
+
+  it('treats expired slots as unavailable', async () => {
+    const user = userEvent.setup();
+    renderView({
+      data: {
+        ...baseData,
+        courtSlots: [
+          {
+            facilityId: 'court-1',
+            courtName: 'Badminton Court 1',
+            location: 'Main Sports Complex',
+            capacity: 4,
+            slots: [
+              {
+                _id: 'slot-expired',
+                status: 'Unavailable',
+                slotStart: '2026-03-26T10:00:00.000Z',
+                slotEnd: '2026-03-26T11:00:00.000Z',
+                spotsLeft: 2,
+                capacity: 4,
+                minPlayersRequired: 2,
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    await user.click(screen.getByRole('button', { name: /select slot badminton court 1/i }));
+
+    expect(screen.getByText(/already ended for the selected day/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /confirm booking/i })).toBeDisabled();
+  });
+
+  it('renders upcoming bookings inside the booking activity table', () => {
+    renderView({
+      data: {
+        ...baseData,
+        recentActivity: [
+          {
+            _id: 'activity-1',
+            date: '2026-03-27T03:30:00.000Z',
+            facility: 'Badminton Court 1',
+            time: '09:00 am - 10:00 am',
+            status: 'confirmed',
+            source: 'v2',
+          },
+        ],
+      },
+    });
+
+    expect(screen.getByText(/booking activity/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/badminton court 1/i)).toHaveLength(2);
+    expect(screen.getByText(/confirmed/i)).toBeInTheDocument();
   });
 });

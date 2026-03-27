@@ -19,13 +19,18 @@ import {
   Sun,
   Moon,
   Users,
+  ShieldCheck,
   Shield,
   BarChart3,
   ClipboardList,
   Building2,
   Gavel,
   FileText,
-  ScanLine
+  ScanLine,
+  BookOpen,
+  Building,
+  CalendarPlus,
+  ClipboardCheck
 } from 'lucide-react';
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -46,6 +51,12 @@ const coordinatorItems = [
   { path: '/coordinator/venues', label: 'Book Venue', icon: LayoutDashboard },
 ];
 
+const captainItems = [
+  { path: '/captain/dashboard', label: 'Slot Block', icon: ShieldCheck },
+];
+const caretakerItems = [
+  { path: '/caretaker/sports', label: 'Sports Console', icon: ClipboardCheck },
+];
 const executiveItems = [
   { path: '/executive/dashboard', label: 'Overview', icon: LayoutDashboard },
   { path: '/executive/calendar', label: 'Calendar Mgmt', icon: CalendarDays },
@@ -115,7 +126,13 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const roles = user?.roles || [];
+  const isCaretakerOnly = roles.includes('caretaker')
+    && !roles.some((role) => ['student', 'faculty', 'executive', 'admin', 'coordinator', 'captain', 'gym_admin', 'swim_admin'].includes(role));
+
   const isCoordinator = user?.roles?.some(r => ['coordinator', 'executive', 'admin'].includes(r));
+  const isCaptain = user?.roles?.some(r => r === 'captain');
+  const isCaretaker = user?.roles?.some(r => ['caretaker', 'executive', 'admin'].includes(r));
   const isExecutive = user?.roles?.some(r => ['executive', 'admin'].includes(r));
   const isGymAdmin = user?.roles?.some(r => r === 'gym_admin');
   const isSwimAdmin = user?.roles?.some(r => r === 'swim_admin');
@@ -139,7 +156,7 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
       <aside
         className={`
           fixed top-0 left-0 z-50 h-full bg-sidebar
-          flex flex-col transition-all duration-300 ease-in-out
+          flex flex-col overflow-y-auto transition-all duration-300 ease-in-out
           lg:translate-x-0 lg:static lg:z-auto
           ${collapsed ? 'w-20' : 'w-64'}
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -166,14 +183,24 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
 
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          {/* ── Student nav (hidden for facility admins) ── */}
-          {!isFacilityAdmin && studentItems.map(item => (
+          {/* ── Student nav (hidden for facility admins and pure caretakers) ── */}
+          {!isFacilityAdmin && !isCaretakerOnly && studentItems.map(item => (
             <NavItem key={item.path} {...item} collapsed={collapsed} onClose={onClose} />
           ))}
 
           {/* ── Coordinator section ── */}
           {isCoordinator && !isFacilityAdmin && (
             <NavSection title="Coordinators" items={coordinatorItems} collapsed={collapsed} onClose={onClose} />
+          )}
+
+          {/* ── Captain section ── */}
+          {isCaptain && !isFacilityAdmin && (
+            <NavSection title="Captain" items={captainItems} collapsed={collapsed} onClose={onClose} />
+          )}
+
+          {/* ── Caretaker section ── */}
+          {isCaretaker && !isFacilityAdmin && (
+            <NavSection title="Caretaker" items={caretakerItems} collapsed={collapsed} onClose={onClose} />
           )}
 
           {/* ── Executive section ── */}
@@ -183,30 +210,12 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
 
           {/* ── Gym Admin section ── */}
           {isGymAdmin && (
-            <>
-              {!collapsed && (
-                <p className="px-4 text-xs font-semibold text-brand-300 uppercase tracking-wider mb-3">
-                  Gym Administration
-                </p>
-              )}
-              {gymAdminItems.map(item => (
-                <NavItem key={item.path} {...item} collapsed={collapsed} onClose={onClose} />
-              ))}
-            </>
+            <NavSection title="Gym Administration" items={gymAdminItems} collapsed={collapsed} onClose={onClose} />
           )}
 
           {/* ── Swim Admin section ── */}
           {isSwimAdmin && (
-            <>
-              {!collapsed && (
-                <p className="px-4 text-xs font-semibold text-brand-300 uppercase tracking-wider mb-3">
-                  Swim Administration
-                </p>
-              )}
-              {swimAdminItems.map(item => (
-                <NavItem key={item.path} {...item} collapsed={collapsed} onClose={onClose} />
-              ))}
-            </>
+            <NavSection title="Swim Administration" items={swimAdminItems} collapsed={collapsed} onClose={onClose} />
           )}
         </nav>
 
@@ -237,6 +246,9 @@ const Topbar = ({ onMenuToggle }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const roles = user?.roles || [];
+  const isCaretakerOnly = roles.includes('caretaker')
+    && !roles.some((role) => ['student', 'faculty', 'executive', 'admin', 'coordinator', 'captain', 'gym_admin', 'swim_admin'].includes(role));
   const [profileOpen, setProfileOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('theme') === 'dark';
@@ -260,7 +272,7 @@ const Topbar = ({ onMenuToggle }) => {
 
   // Fetch dashboard info — only for non-admin roles (student/coordinator/executive)
   useEffect(() => {
-    if (isFacilityAdmin) return; // Skip for gym_admin/swim_admin — endpoint not available
+    if (isFacilityAdmin || isCaretakerOnly) return; 
 
     const fetchDashboardInfo = async () => {
       try {
@@ -277,7 +289,7 @@ const Topbar = ({ onMenuToggle }) => {
       }
     };
     fetchDashboardInfo();
-  }, [isFacilityAdmin]);
+  }, [isFacilityAdmin, isCaretakerOnly]);
 
   // Derive page name from path
   const pageName = (() => {
@@ -288,6 +300,8 @@ const Topbar = ({ onMenuToggle }) => {
     if (path === '/settings') return 'Settings';
     if (path === '/calendar') return 'Calendar';
     if (path === '/feedback') return 'Feedback';
+    if (path.startsWith('/caretaker')) return 'Caretaker Console';
+
     if (path.startsWith('/coordinator')) return 'Coordinators';
     if (path.startsWith('/executive')) return 'Executive Portal';
     if (path.startsWith('/gym-admin')) return 'Gym Administration';
@@ -390,13 +404,15 @@ const Topbar = ({ onMenuToggle }) => {
                   <p className="text-sm font-semibold text-gray-800 truncate">{displayName}</p>
                   <p className="text-xs text-gray-400 truncate">{user?.email}</p>
                 </div>
-                <button
-                  onClick={() => { setProfileOpen(false); navigate('/settings'); }}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
-                >
-                  <Settings size={16} />
-                  Settings
-                </button>
+                {!isCaretakerOnly ? (
+                  <button
+                    onClick={() => { setProfileOpen(false); navigate('/settings'); }}
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
+                  >
+                    <Settings size={16} />
+                    Settings
+                  </button>
+                ) : null}
               </div>
             </>
           )}

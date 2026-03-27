@@ -50,28 +50,67 @@ const PLAN_PRICING_FALLBACK = {
     }
 };
 
+const IST_TIME_ZONE = 'Asia/Kolkata';
+const IST_OFFSET_MINUTES = 330;
+
+const getIstParts = (date = new Date()) => {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: IST_TIME_ZONE,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        weekday: 'long'
+    });
+
+    const parts = formatter.formatToParts(date);
+    const valueOf = (type) => parts.find((part) => part.type === type)?.value;
+
+    return {
+        year: Number(valueOf('year')),
+        month: Number(valueOf('month')),
+        day: Number(valueOf('day')),
+        weekday: valueOf('weekday')
+    };
+};
+
+const getIstDateString = (date = new Date()) => {
+    const { year, month, day } = getIstParts(date);
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+};
+
+const getUtcDateForIstMidnight = (year, month, day) => {
+    return new Date(Date.UTC(year, month - 1, day, 0, -IST_OFFSET_MINUTES, 0, 0));
+};
+
 // ── Helper: build date boundaries for a given date string ────────────────────
 
 const getDateBounds = (dateStr) => {
-    const d = dateStr ? new Date(dateStr) : new Date();
-    if (Number.isNaN(d.getTime())) return null;
-    const start = new Date(d); start.setHours(0, 0, 0, 0);
-    const end = new Date(d); end.setHours(23, 59, 59, 999);
-    return { start, end, dateObj: d };
+    if (!dateStr) return null;
+
+    const [year, month, day] = String(dateStr).split('-').map(Number);
+    if (!year || !month || !day) return null;
+
+    const start = getUtcDateForIstMidnight(year, month, day);
+    const end = new Date(start.getTime() + (24 * 60 * 60 * 1000) - 1);
+    const dateObj = new Date(Date.UTC(year, month - 1, day));
+
+    return { start, end, dateObj };
 };
 
 // ── Helper: get next 3 bookable dates ────────────────────────────────────────
 
 const getBookableDates = () => {
     const dates = [];
-    const today = new Date();
+    const todayIst = getIstParts();
+
     for (let i = 0; i < 3; i++) {
-        const d = new Date(today);
-        d.setDate(d.getDate() + i);
+        const calendarDate = new Date(Date.UTC(todayIst.year, todayIst.month - 1, todayIst.day + i));
+        const istParts = getIstParts(calendarDate);
+
         dates.push({
-            date: d.toISOString().slice(0, 10),
-            label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : d.toLocaleDateString('en-IN', { weekday: 'long' }),
-            dayOfWeek: d.getDay()
+            date: getIstDateString(calendarDate),
+            label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : istParts.weekday,
+            dayOfWeek: calendarDate.getUTCDay()
         });
     }
     return dates;
@@ -100,6 +139,7 @@ export const getSportsBookingPage = async (req, res) => {
 
         const userId = req.user._id;
         const { sportType, date } = req.query;
+        const currentTime = new Date();
 
         // ── 1. All active sports facilities (for dropdown) ───────────
         const allSportsFacilities = await Facility.find({
@@ -122,7 +162,8 @@ export const getSportsBookingPage = async (req, res) => {
 
         // ── 3. Bookable dates ────────────────────────────────────────
         const bookableDates = getBookableDates();
-        const selectedDate = date || bookableDates[0]?.date;
+        const allowedDates = new Set(bookableDates.map((entry) => entry.date));
+        const selectedDate = date && allowedDates.has(date) ? date : bookableDates[0]?.date;
         const dateBounds = getDateBounds(selectedDate);
 
         // ── 4. Slots grouped by court/facility for the selected date ─
@@ -151,7 +192,7 @@ export const getSportsBookingPage = async (req, res) => {
                 slotStartAt: { $gte: dateBounds.start, $lte: dateBounds.end },
                 status: { $in: ['confirmed', 'group_pending', 'completed'] }
             })
-                .select('facility slot slotStartAt slotEndAt status isGroupBooking participants')
+                .select('facility slot slotStartAt slotEndAt status isGroupBooking participantCount participants')
                 .maxTimeMS(5000)
                 .lean();
 
@@ -189,7 +230,13 @@ export const getSportsBookingPage = async (req, res) => {
                 const bookings = bookingMap.get(key) || [];
 
                 // Calculate how many spots are taken
-                const totalBooked = bookings.reduce((sum, b) => sum + 1 + (b.participants?.length || 0), 0);
+                const totalBooked = bookings.reduce((sum, b) => {
+                    const bookingCount = typeof b.participantCount === 'number'
+                        ? b.participantCount
+                        : Math.max(1, b.participants?.length || 1);
+
+                    return sum + bookingCount;
+                }, 0);
                 const slotCapacity = slot.capacity || slot.facility?.capacity || 1;
                 const spotsLeft = Math.max(slotCapacity - totalBooked, 0);
 
@@ -198,6 +245,10 @@ export const getSportsBookingPage = async (req, res) => {
                     slotStatus = 'Fully Booked';
                 } else if (bookings.some(b => b.status === 'group_pending')) {
                     slotStatus = 'Group Open';
+                }
+
+                if (slotEnd <= currentTime) {
+                    slotStatus = 'Unavailable';
                 }
 
                 courtMap.get(courtId).slots.push({
@@ -214,7 +265,9 @@ export const getSportsBookingPage = async (req, res) => {
                         _id: b._id,
                         status: b.status,
                         isGroupBooking: b.isGroupBooking,
-                        participantCount: 1 + (b.participants?.length || 0)
+                        participantCount: typeof b.participantCount === 'number'
+                            ? b.participantCount
+                            : Math.max(1, b.participants?.length || 1)
                     }))
                 });
             }
@@ -262,9 +315,19 @@ export const getSportsBookingPage = async (req, res) => {
             checkUserSuspension(userId)
         ]);
 
-        // ── 6. Recent activity (last 10 past bookings) ──────────────
+        // ── 6. Booking activity (upcoming + recent history) ─────────
         const now = new Date();
-        const [recentSports, recentV1] = await Promise.all([
+        const [activeSports, recentSports, activeV1, recentV1] = await Promise.all([
+            SportsBooking.find({
+                user: userId,
+                slotEndAt: { $gte: now },
+                status: { $in: ['confirmed', 'group_pending'] }
+            })
+                .populate('facility', 'name sportType')
+                .sort({ slotStartAt: 1 })
+                .limit(10)
+                .maxTimeMS(5000)
+                .lean(),
             SportsBooking.find({
                 user: userId,
                 slotStartAt: { $lt: now },
@@ -272,6 +335,17 @@ export const getSportsBookingPage = async (req, res) => {
             })
                 .populate('facility', 'name sportType')
                 .sort({ slotStartAt: -1 })
+                .limit(10)
+                .maxTimeMS(5000)
+                .lean(),
+            Booking.find({
+                userId,
+                slotDate: { $gte: now },
+                status: { $in: ['Confirmed', 'Provisioned'] }
+            })
+                .populate('facilityId', 'name sportType')
+                .populate('slotId', 'startTime endTime')
+                .sort({ slotDate: 1 })
                 .limit(10)
                 .maxTimeMS(5000)
                 .lean(),
@@ -289,6 +363,14 @@ export const getSportsBookingPage = async (req, res) => {
         ]);
 
         const recentActivity = [
+            ...activeSports.map(b => ({
+                _id: b._id,
+                date: b.slotStartAt,
+                facility: b.facility?.name || 'Unknown',
+                time: `${new Date(b.slotStartAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} - ${new Date(b.slotEndAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`,
+                status: b.status,
+                source: 'v2'
+            })),
             ...recentSports.map(b => ({
                 _id: b._id,
                 date: b.slotStartAt,
@@ -296,6 +378,16 @@ export const getSportsBookingPage = async (req, res) => {
                 time: `${new Date(b.slotStartAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} - ${new Date(b.slotEndAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`,
                 status: b.status,
                 source: 'v2'
+            })),
+            ...activeV1.map(b => ({
+                _id: b._id,
+                date: b.slotDate,
+                facility: b.facilityId?.name || 'Unknown',
+                time: b.slotId
+                    ? `${new Date(b.slotId.startTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} - ${new Date(b.slotId.endTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`
+                    : null,
+                status: b.status,
+                source: 'v1'
             })),
             ...recentV1.map(b => ({
                 _id: b._id,
@@ -308,7 +400,18 @@ export const getSportsBookingPage = async (req, res) => {
                 source: 'v1'
             }))
         ]
-            .sort((a, b) => new Date(b.date) - new Date(a.date))
+            .sort((a, b) => {
+                const aDate = new Date(a.date);
+                const bDate = new Date(b.date);
+                const aIsUpcoming = aDate >= now;
+                const bIsUpcoming = bDate >= now;
+
+                if (aIsUpcoming !== bIsUpcoming) {
+                    return aIsUpcoming ? -1 : 1;
+                }
+
+                return aIsUpcoming ? aDate - bDate : bDate - aDate;
+            })
             .slice(0, 10);
 
         // ── 7. Assemble response ─────────────────────────────────────

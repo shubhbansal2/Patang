@@ -1,261 +1,380 @@
-import React, { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { User, Shield, Key, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import api from '../services/api';
+import {
+  User, Mail, Lock, Shield, Eye, EyeOff, Save, CheckCircle2,
+  AlertTriangle, Dumbbell, Waves, Calendar, BadgeCheck, Info,
+  Hash, GraduationCap, Building2, Briefcase
+} from 'lucide-react';
 
+/* ═══════════════════════════════════════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════════════════════════════════════ */
+
+const fmtDate = (d) => {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+/* ─── Reusable input field ──────────────────────────────────────────── */
+const Field = ({ label, icon: Icon, value, onChange, disabled, type = 'text', placeholder }) => (
+  <div>
+    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">{label}</label>
+    <div className="relative">
+      {Icon && <Icon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />}
+      <input
+        type={type}
+        value={value || ''}
+        onChange={onChange}
+        disabled={disabled}
+        placeholder={placeholder}
+        className={`w-full ${Icon ? 'pl-10' : 'pl-4'} pr-4 py-2.5 text-sm border rounded-xl transition-all ${
+          disabled
+            ? 'bg-gray-50 text-gray-400 border-gray-100 cursor-not-allowed'
+            : 'bg-white text-gray-800 border-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400'
+        }`}
+      />
+    </div>
+  </div>
+);
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MAIN PAGE
+   ═══════════════════════════════════════════════════════════════════════ */
 const SettingsPage = () => {
-  const { user } = useAuth();
-  
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' });
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [showPasswordMap, setShowPasswordMap] = useState({
-    current: false,
-    new: false,
-    confirm: false
-  });
+  const { user: authUser, logout } = useAuth();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  if (!user) {
+  // Profile form
+  const [name, setName] = useState('');
+  const [program, setProgram] = useState('');
+  const [department, setDepartment] = useState('');
+  const [designation, setDesignation] = useState('');
+  const [profileMsg, setProfileMsg] = useState({ type: '', text: '' });
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // Password form
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [pwMsg, setPwMsg] = useState({ type: '', text: '' });
+  const [savingPw, setSavingPw] = useState(false);
+
+  /* ── Fetch ──────────────────────────────────────────────────────── */
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data: res } = await api.get('/settings');
+      const d = res.data || res;
+      setData(d);
+      setName(d.profile?.name || '');
+      setProgram(d.profile?.profileDetails?.program || '');
+      setDepartment(d.profile?.profileDetails?.department || '');
+      setDesignation(d.profile?.profileDetails?.designation || '');
+    } catch (err) {
+      console.error('Settings fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  /* ── Save profile ───────────────────────────────────────────────── */
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    setProfileMsg({ type: '', text: '' });
+    if (!name.trim()) { setProfileMsg({ type: 'error', text: 'Name cannot be empty.' }); return; }
+
+    setSavingProfile(true);
+    try {
+      await api.patch('/settings/profile', { name: name.trim(), program: program.trim(), department: department.trim(), designation: designation.trim() });
+      setProfileMsg({ type: 'success', text: 'Profile updated successfully!' });
+      setTimeout(() => setProfileMsg({ type: '', text: '' }), 3000);
+    } catch (err) {
+      setProfileMsg({ type: 'error', text: err.response?.data?.message || 'Failed to update profile.' });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  /* ── Change password ────────────────────────────────────────────── */
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPwMsg({ type: '', text: '' });
+    if (!currentPassword || !newPassword || !confirmPassword) { setPwMsg({ type: 'error', text: 'All fields are required.' }); return; }
+    if (newPassword !== confirmPassword) { setPwMsg({ type: 'error', text: 'New passwords do not match.' }); return; }
+    if (newPassword.length < 8) { setPwMsg({ type: 'error', text: 'Password must be at least 8 characters.' }); return; }
+
+    setSavingPw(true);
+    try {
+      await api.patch('/settings/password', { currentPassword, newPassword, confirmPassword });
+      setPwMsg({ type: 'success', text: 'Password changed successfully!' });
+      setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+      setTimeout(() => setPwMsg({ type: '', text: '' }), 3000);
+    } catch (err) {
+      setPwMsg({ type: 'error', text: err.response?.data?.message || 'Failed to change password.' });
+    } finally {
+      setSavingPw(false);
+    }
+  };
+
+  const profile = data?.profile;
+  const account = data?.account;
+  const subscriptions = data?.subscriptions || [];
+
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-brand-200 border-t-brand-500 rounded-full animate-spin"></div>
+      <div className="flex items-center justify-center py-32">
+        <div className="w-8 h-8 border-3 border-brand-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
-  const handlePasswordChange = (e) => {
-    const { name, value } = e.target;
-    setPasswordForm(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleUpdatePassword = async (e) => {
-    e.preventDefault();
-    setPasswordMessage({ type: '', text: '' });
-
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordMessage({ type: 'error', text: 'New passwords do not match.' });
-      return;
-    }
-
-    if (passwordForm.newPassword.length < 8) {
-      setPasswordMessage({ type: 'error', text: 'New password must be at least 8 characters.' });
-      return;
-    }
-
-    setIsUpdating(true);
-    try {
-      const res = await api.put('/auth/update-password', {
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword,
-        confirmPassword: passwordForm.confirmPassword
-      });
-      setPasswordMessage({ type: 'success', text: res.data.message || 'Password updated successfully!' });
-      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setTimeout(() => {
-        setShowPasswordForm(false);
-        setPasswordMessage({ type: '', text: '' });
-      }, 3000);
-    } catch (err) {
-      setPasswordMessage({ 
-        type: 'error', 
-        text: err.response?.data?.message || 'Failed to update password.'
-      });
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const roleLabels = {
-    'student': 'Student',
-    'admin': 'Super Admin',
-    'executive': 'Executive Admin',
-    'gym_admin': 'Gym Administrator',
-    'swim_admin': 'Swim Administrator',
-    'coordinator': 'Facility Coordinator'
-  };
-
-  const currentRole = user.roles?.[0] ? roleLabels[user.roles[0]] || user.roles[0] : 'User';
-
+  /* ═══════════════════════════════════════════════════════════════════
+     RENDER
+     ═══════════════════════════════════════════════════════════════════ */
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800">Account Settings</h1>
-        <p className="text-sm text-gray-500 mt-1">Manage your profile, roles, and preferences.</p>
+    <div>
+      {/* Header */}
+      <div className="mb-5">
+        <p className="text-xs text-gray-400 mb-0.5">Home / <span className="text-gray-600 font-medium">Settings</span></p>
+        <h1 className="text-2xl font-bold text-gray-800">Settings</h1>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        {/* Profile Information */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <div className="flex items-center gap-3 mb-4 text-brand-500">
-            <User size={20} />
-            <h3 className="text-lg font-bold text-gray-800">Profile Information</h3>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Full Name</p>
-              <p className="mt-1 text-base font-medium text-gray-800">{user.name || 'Not provided'}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Email Address</p>
-              <p className="mt-1 text-base font-medium text-gray-800">{user.email}</p>
-            </div>
-            {user.profileDetails?.rollNumber && (
+      <div className="flex gap-6">
+        {/* ─── Main Content ────────────────────────────────────────── */}
+        <div className="flex-1 min-w-0 space-y-5">
+          {/* ── Profile Information ────────────────────────────────── */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center">
+                <User size={18} className="text-brand-500" />
+              </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Roll Number</p>
-                <p className="mt-1 text-base font-medium text-gray-800">{user.profileDetails.rollNumber}</p>
+                <h2 className="text-base font-bold text-gray-800">Profile Information</h2>
+                <p className="text-xs text-gray-400">Update your personal details</p>
               </div>
+            </div>
+
+            {profileMsg.text && (
+              <div className={`mb-4 px-4 py-3 rounded-xl text-sm font-medium ${
+                profileMsg.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                  : 'bg-red-50 text-red-600 border border-red-200'
+              }`}>{profileMsg.text}</div>
             )}
-          </div>
-        </div>
 
-        {/* Account Status / Roles */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <div className="flex items-center gap-3 mb-4 text-blue-500">
-            <Shield size={20} />
-            <h3 className="text-lg font-bold text-gray-800">Account Status</h3>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Primary Role</p>
-              <div className="mt-2 inline-flex" >
-                 <span className="bg-blue-50 text-blue-700 border border-blue-200 px-3 py-1 rounded-full text-sm font-semibold tracking-wide">
-                    {currentRole}
-                 </span>
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Full Name" icon={User} value={name} onChange={e => setName(e.target.value)} placeholder="Your full name" />
+                <Field label="Email Address" icon={Mail} value={profile?.email} disabled placeholder="Email" />
               </div>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Permissions</p>
-              <p className="mt-1 text-sm text-gray-600">
-                You have access to areas defined for your specific role. Additional permissions must be granted by the Super Admin.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Security Mock */}
-        <div className="bg-white lg:col-span-2 rounded-2xl border border-gray-100 shadow-sm p-6">
-          <div className="flex items-center gap-3 mb-4 text-emerald-500">
-            <Key size={20} />
-            <h3 className="text-lg font-bold text-gray-800">Security Preferences</h3>
-          </div>
-          <div className="flex flex-col gap-4">
-            {!showPasswordForm ? (
-              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">Change Password</p>
-                  <p className="text-xs text-gray-500 mt-1">We recommend changing your password every 90 days.</p>
-                </div>
-                <button 
-                  onClick={() => setShowPasswordForm(true)}
-                  className="px-4 py-2 bg-white border border-gray-200 text-sm font-semibold text-gray-700 rounded-lg shadow-sm hover:bg-gray-50 transition-colors shrink-0"
-                >
-                   Update Password
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Roll Number" icon={Hash} value={profile?.profileDetails?.rollNumber} disabled placeholder="Roll number" />
+                <Field label="Program" icon={GraduationCap} value={program} onChange={e => setProgram(e.target.value)} placeholder="e.g. BTech, MTech, PhD" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Department" icon={Building2} value={department} onChange={e => setDepartment(e.target.value)} placeholder="e.g. CSE, EE, ME" />
+                <Field label="Designation" icon={Briefcase} value={designation} onChange={e => setDesignation(e.target.value)} placeholder="e.g. Student, Professor" />
+              </div>
+              <div className="flex justify-end pt-2">
+                <button type="submit" disabled={savingProfile}
+                  className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-brand-500 rounded-xl hover:bg-brand-600 disabled:opacity-50 transition-colors shadow-sm shadow-brand-500/20">
+                  <Save size={14} />
+                  {savingProfile ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
-            ) : (
-              <form onSubmit={handleUpdatePassword} className="bg-gray-50 p-5 rounded-xl border border-gray-100 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-bold text-gray-800">Update Password</h4>
-                  <button 
-                    type="button" 
-                    onClick={() => {
-                        setShowPasswordForm(false);
-                        setPasswordMessage({ type: '', text: '' });
-                    }}
-                    className="text-xs font-semibold text-gray-500 hover:text-gray-700"
-                  >
-                    Cancel
-                  </button>
-                </div>
-                
-                {passwordMessage.text && (
-                  <div className={`p-3 rounded-lg flex items-start gap-2 text-sm ${
-                    passwordMessage.type === 'error' ? 'bg-red-50 text-red-700 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                  }`}>
-                    {passwordMessage.type === 'error' ? <AlertCircle size={16} className="mt-0.5" /> : <CheckCircle2 size={16} className="mt-0.5" />}
-                    <span>{passwordMessage.text}</span>
-                  </div>
-                )}
+            </form>
+          </div>
 
-                <div className="space-y-4 pt-2">
-                  <div className="relative">
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Current Password</label>
-                    <input 
-                      type={showPasswordMap.current ? 'text' : 'password'}
-                      name="currentPassword"
-                      value={passwordForm.currentPassword}
-                      onChange={handlePasswordChange}
-                      required
-                      className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPasswordMap(prev => ({ ...prev, current: !prev.current }))}
-                      className="absolute right-3 top-[26px] text-gray-400 hover:text-gray-600 focus:outline-none"
-                    >
-                      {showPasswordMap.current ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">New Password</label>
-                    <input 
-                      type={showPasswordMap.new ? 'text' : 'password'}
-                      name="newPassword"
-                      value={passwordForm.newPassword}
-                      onChange={handlePasswordChange}
-                      required
-                      minLength="8"
-                      className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                    />
-                     <button
-                      type="button"
-                      onClick={() => setShowPasswordMap(prev => ({ ...prev, new: !prev.new }))}
-                      className="absolute right-3 top-[26px] text-gray-400 hover:text-gray-600 focus:outline-none"
-                    >
-                      {showPasswordMap.new ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Confirm New Password</label>
-                    <input 
-                      type={showPasswordMap.confirm ? 'text' : 'password'}
-                      name="confirmPassword"
-                      value={passwordForm.confirmPassword}
-                      onChange={handlePasswordChange}
-                      required
-                      minLength="8"
-                      className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500"
-                    />
-                     <button
-                      type="button"
-                      onClick={() => setShowPasswordMap(prev => ({ ...prev, confirm: !prev.confirm }))}
-                      className="absolute right-3 top-[26px] text-gray-400 hover:text-gray-600 focus:outline-none"
-                    >
-                      {showPasswordMap.confirm ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
+          {/* ── Change Password ─────────────────────────────────────── */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+                <Lock size={18} className="text-amber-500" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-gray-800">Change Password</h2>
+                <p className="text-xs text-gray-400">Minimum 8 characters required</p>
+              </div>
+            </div>
 
-                <div className="pt-2 flex justify-end">
-                  <button 
-                    type="submit" 
-                    disabled={isUpdating}
-                    className="px-4 py-2 bg-brand-500 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-brand-600 transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {isUpdating ? 'Updating...' : 'Save Password'}
-                  </button>
-                </div>
-              </form>
+            {pwMsg.text && (
+              <div className={`mb-4 px-4 py-3 rounded-xl text-sm font-medium ${
+                pwMsg.type === 'success' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                  : 'bg-red-50 text-red-600 border border-red-200'
+              }`}>{pwMsg.text}</div>
             )}
+
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Current Password</label>
+                <div className="relative">
+                  <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input type={showCurrent ? 'text' : 'password'} value={currentPassword} onChange={e => setCurrentPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all" />
+                  <button type="button" onClick={() => setShowCurrent(!showCurrent)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10">
+                    {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">New Password</label>
+                  <div className="relative">
+                    <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input type={showNew ? 'text' : 'password'} value={newPassword} onChange={e => setNewPassword(e.target.value)}
+                      placeholder="Min 8 characters"
+                      className="w-full pl-10 pr-10 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all" />
+                    <button type="button" onClick={() => setShowNew(!showNew)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10">
+                      {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Confirm Password</label>
+                  <div className="relative">
+                    <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter password"
+                      className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all" />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end pt-2">
+                <button type="submit" disabled={savingPw}
+                  className="flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-amber-500 rounded-xl hover:bg-amber-600 disabled:opacity-50 transition-colors shadow-sm shadow-amber-500/20">
+                  <Lock size={14} />
+                  {savingPw ? 'Updating...' : 'Change Password'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-        
+
+        {/* ─── Sidebar ─────────────────────────────────────────────── */}
+        <div className="w-72 flex-shrink-0 space-y-5">
+          {/* Account Status */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Shield size={16} className="text-brand-500" />
+              <h3 className="text-sm font-bold text-gray-800">Account Status</h3>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Status</span>
+                <span className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border ${
+                  account?.status === 'active' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                  account?.status === 'suspended' ? 'bg-red-50 text-red-500 border-red-200' :
+                  'bg-gray-100 text-gray-500 border-gray-200'
+                }`}>
+                  {account?.status === 'active' ? <CheckCircle2 size={10} /> : <AlertTriangle size={10} />}
+                  {(account?.status || 'unknown').charAt(0).toUpperCase() + (account?.status || 'unknown').slice(1)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Verified</span>
+                <span className={`text-xs font-bold ${profile?.isVerified ? 'text-emerald-500' : 'text-red-500'}`}>
+                  {profile?.isVerified ? '✓ Yes' : '✗ No'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Role</span>
+                <span className="text-xs font-semibold text-gray-700">
+                  {(profile?.roles || []).map(r => r.charAt(0).toUpperCase() + r.slice(1)).join(', ') || 'Student'}
+                </span>
+              </div>
+              {profile?.captainOf && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Captain Of</span>
+                  <span className="text-xs font-semibold text-brand-500">{profile.captainOf}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">Penalties</span>
+                <span className={`text-xs font-bold ${account?.activePenalties > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                  {account?.activePenalties || 0} active
+                </span>
+              </div>
+              {account?.isSuspended && (
+                <div className="p-3 bg-red-50 rounded-xl border border-red-100 mt-2">
+                  <p className="text-xs font-semibold text-red-600">⚠ Account Suspended</p>
+                  <p className="text-[10px] text-red-400 mt-0.5">Until {fmtDate(account.suspendedUntil)}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Subscriptions */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <BadgeCheck size={16} className="text-brand-500" />
+              <h3 className="text-sm font-bold text-gray-800">Active Subscriptions</h3>
+            </div>
+            {subscriptions.length > 0 ? (
+              <div className="space-y-3">
+                {subscriptions.map((sub, i) => (
+                  <div key={sub._id || i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                    {sub.facilityType === 'Gym' ? <Dumbbell size={16} className="text-purple-400" /> : <Waves size={16} className="text-blue-400" />}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-gray-700">{sub.facilityType} — {sub.plan}</p>
+                      <p className="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5">
+                        <Calendar size={9} /> Valid till {fmtDate(sub.endDate)}
+                      </p>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      sub.status === 'Approved' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
+                    }`}>{sub.status}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400">No active subscriptions.</p>
+            )}
+          </div>
+
+          {/* Account Info */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Info size={16} className="text-brand-500" />
+              <h3 className="text-sm font-bold text-gray-800">Account Info</h3>
+            </div>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Member Since</span>
+                <span className="text-gray-700 font-medium">{fmtDate(profile?.createdAt)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Last Login</span>
+                <span className="text-gray-700 font-medium">{fmtDate(profile?.lastLogin)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Support */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h3 className="text-sm font-bold text-gray-800 mb-2">Need Help?</h3>
+            <p className="text-xs text-gray-400 leading-relaxed mb-3">
+              Contact the sports office for account issues, subscription queries, or penalty disputes.
+            </p>
+            <a href={`mailto:${data?.supportContact || 'sports_office@iitk.ac.in'}`}
+              className="block w-full text-center px-4 py-2 text-sm font-medium text-brand-600 bg-brand-50 border border-brand-200 rounded-xl hover:bg-brand-100 transition-all">
+              {data?.supportContact || 'sports_office@iitk.ac.in'}
+            </a>
+          </div>
+
+          {/* Logout */}
+          <button onClick={logout}
+            className="w-full px-4 py-2.5 text-sm font-semibold text-red-500 bg-red-50 border border-red-200 rounded-2xl hover:bg-red-100 transition-all">
+            Log Out
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -64,12 +64,13 @@ describe('slot-booking api helpers', () => {
   it('posts booking and registration payloads to the expected endpoints', async () => {
     postMock.mockResolvedValueOnce({ data: { data: { bookingId: 'b1' } } });
     await expect(
-      createSportsBooking({ slotId: 'slot-1', bookingDate: '2026-03-26', isGroupBooking: true })
+      createSportsBooking({ slotId: 'slot-1', bookingDate: '2026-03-26', isGroupBooking: true, participantCount: 3 })
     ).resolves.toEqual({ bookingId: 'b1' });
     expect(postMock).toHaveBeenCalledWith('/bookings', {
       slotId: 'slot-1',
       bookingDate: '2026-03-26',
       isGroupBooking: true,
+      participantCount: 3,
     });
 
     const medicalCert = new File(['medical'], 'medical.pdf', { type: 'application/pdf' });

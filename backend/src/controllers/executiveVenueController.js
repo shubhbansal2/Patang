@@ -13,7 +13,7 @@ export const getPendingVenues = async (req, res) => {
         const pageNum = Math.max(1, parseInt(page));
         const limitNum = Math.min(50, Math.max(1, parseInt(limit)));
 
-        const query = { status: 'pending' };
+        const query = { status: 'pending', endTime: { $gte: new Date() } };
 
         const [venueRequests, total] = await Promise.all([
             FacilityBlock.find(query)

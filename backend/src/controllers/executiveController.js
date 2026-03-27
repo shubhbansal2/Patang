@@ -43,8 +43,8 @@ export const getDashboard = async (req, res) => {
             resolvedThisWeek,
             recentActions
         ] = await Promise.all([
-            Event.countDocuments({ status: 'Pending' }),
-            FacilityBlock.countDocuments({ status: 'pending' }),
+            Event.countDocuments({ status: 'Pending', endTime: { $gte: new Date() } }),
+            FacilityBlock.countDocuments({ status: 'pending', endTime: { $gte: new Date() } }),
             SubscriptionV2.countDocuments({ status: 'Pending' }),
             getFacilityOccupancySummary('Gym'),
             getFacilityOccupancySummary('SwimmingPool'),

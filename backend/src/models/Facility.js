@@ -9,7 +9,7 @@ const facilitySchema = new mongoose.Schema(
         },
         facilityType: {
             type: String,
-            enum: ['sports', 'gym', 'swimming'],
+            enum: ['sports', 'gym', 'swimming', 'venue'],
             required: true
         },
         sportType: {
@@ -33,7 +33,7 @@ const facilitySchema = new mongoose.Schema(
         allowedRoles: [
             {
                 type: String,
-                enum: ['student', 'faculty', 'caretaker', 'captain', 'executive', 'admin', 'guard', 'gym_admin', 'swim_admin']
+                enum: ['student', 'faculty', 'caretaker', 'captain', 'executive', 'admin', 'guard', 'gym_admin', 'swim_admin', 'coordinator']
             }
         ],
         isOperational: {

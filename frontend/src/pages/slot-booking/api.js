@@ -32,11 +32,12 @@ export const fetchSportsBookingPage = async ({ sportType, date } = {}) => {
   return unwrapApiResponse(response);
 };
 
-export const createSportsBooking = async ({ slotId, bookingDate, isGroupBooking }) => {
+export const createSportsBooking = async ({ slotId, bookingDate, isGroupBooking, participantCount }) => {
   const response = await api.post('/bookings', {
     slotId,
     bookingDate,
     isGroupBooking,
+    participantCount,
   });
 
   return unwrapApiResponse(response);

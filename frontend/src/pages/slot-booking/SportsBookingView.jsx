@@ -28,6 +28,7 @@ const legendItems = [
   { label: 'Group Open', tone: 'warning' },
   { label: 'Fully Booked', tone: 'danger' },
   { label: 'Team Practice', tone: 'neutral' },
+  { label: 'Unavailable', tone: 'info' },
 ];
 
 const slotToneClasses = {
@@ -51,6 +52,7 @@ const SportsBookingView = ({
   const [selectedSlotId, setSelectedSlotId] = useState('');
   const [selectedCourtId, setSelectedCourtId] = useState('');
   const [isGroupBooking, setIsGroupBooking] = useState(false);
+  const [playerCount, setPlayerCount] = useState(1);
   const hasSports = (data?.sportTypes?.length || 0) > 0;
 
   useEffect(() => {
@@ -58,6 +60,7 @@ const SportsBookingView = ({
       setSelectedSlotId('');
       setSelectedCourtId('');
       setIsGroupBooking(false);
+      setPlayerCount(1);
       return;
     }
 
@@ -69,6 +72,7 @@ const SportsBookingView = ({
       setSelectedSlotId('');
       setSelectedCourtId('');
       setIsGroupBooking(false);
+      setPlayerCount(1);
     }
   }, [data, selectedCourtId, selectedSlotId]);
 
@@ -80,7 +84,17 @@ const SportsBookingView = ({
       selectedSlot.status === 'Available' &&
       selectedSlot.capacity > 1
   );
+  const maxPlayerCount = selectedSlot?.capacity || 1;
   const bookable = isSlotBookable(selectedSlot?.status);
+
+  useEffect(() => {
+    if (!selectedSlot) {
+      setPlayerCount(1);
+      return;
+    }
+
+    setPlayerCount(Math.min(selectedSlot.minPlayersRequired || 1, selectedSlot.capacity || 1));
+  }, [selectedSlotId, selectedCourtId, selectedSlot]);
 
   useEffect(() => {
     if (!canCreateGroupBooking && isGroupBooking) {
@@ -90,6 +104,7 @@ const SportsBookingView = ({
 
   const bookingBlockedReason = (() => {
     if (!selectedSlot) return 'Select a slot to continue.';
+    if (selectedSlot.status === 'Unavailable') return 'This slot has already ended for the selected day.';
     if (!bookable) return 'This slot is not available for booking.';
     if (data?.fairUse?.isSuspended) return 'Your account is currently suspended from booking.';
     if (data?.fairUse && !data.fairUse.canBook) return 'You have reached the active booking limit for the rolling window.';
@@ -103,6 +118,7 @@ const SportsBookingView = ({
       slotId: selectedSlot._id,
       bookingDate: filters.date || data?.selectedDate,
       isGroupBooking,
+      participantCount: playerCount,
     });
   };
 
@@ -125,7 +141,7 @@ const SportsBookingView = ({
         }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.8fr)_360px]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(360px,0.95fr)]">
         <div className="space-y-6">
           <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -306,6 +322,11 @@ const SportsBookingView = ({
                                 <span className="opacity-75">Spots left</span>
                                 <span>{slot.spotsLeft}</span>
                               </div>
+                              {slot.status === 'Unavailable' && (
+                                <div className="rounded-xl bg-white/70 px-3 py-2 text-xs text-gray-600">
+                                  This slot has already ended and cannot be booked now.
+                                </div>
+                              )}
                               <div className="flex items-center justify-between">
                                 <span className="opacity-75">Min players</span>
                                 <span>{slot.minPlayersRequired || 1}</span>
@@ -336,8 +357,8 @@ const SportsBookingView = ({
           <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-bold text-gray-800">Recent activity</h2>
-                <p className="mt-1 text-sm text-gray-500">Latest sports bookings and attendance outcomes.</p>
+                <h2 className="text-lg font-bold text-gray-800">Booking activity</h2>
+                <p className="mt-1 text-sm text-gray-500">Upcoming bookings first, followed by your latest sports outcomes.</p>
               </div>
             </div>
 
@@ -369,8 +390,8 @@ const SportsBookingView = ({
             ) : (
               <div className="mt-5">
                 <EmptyState
-                  title="No recent bookings"
-                  description="Your completed or missed bookings will appear here once activity is recorded."
+                  title="No booking activity yet"
+                  description="Your upcoming and completed sports bookings will appear here once activity is recorded."
                 />
               </div>
             )}
@@ -415,31 +436,60 @@ const SportsBookingView = ({
                 </div>
 
                 <div className="rounded-2xl border border-gray-100 p-4">
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex flex-col gap-4">
                     <div>
                       <p className="text-sm font-semibold text-gray-800">Create as group booking</p>
                       <p className="mt-1 text-sm text-gray-500">
                         Use this when you want the booking to remain pending until the minimum player count is met.
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      aria-label={isGroupBooking ? 'Disable group booking' : 'Enable group booking'}
-                      onClick={() => canCreateGroupBooking && setIsGroupBooking((current) => !current)}
-                      disabled={!canCreateGroupBooking}
-                      className={`relative h-7 w-12 rounded-full transition-colors ${
-                        isGroupBooking ? 'bg-brand-500' : 'bg-gray-300'
-                      } ${canCreateGroupBooking ? '' : 'cursor-not-allowed opacity-50'} focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300`}
-                    >
-                      <span
-                        className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                          isGroupBooking ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
+                    <div className="flex items-center justify-between gap-4 rounded-2xl bg-gray-50 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-800">Group mode</p>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {canCreateGroupBooking ? 'Turn this on for shared bookings.' : 'Unavailable for this slot.'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label={isGroupBooking ? 'Disable group booking' : 'Enable group booking'}
+                        onClick={() => canCreateGroupBooking && setIsGroupBooking((current) => !current)}
+                        disabled={!canCreateGroupBooking}
+                        className={`relative h-7 w-12 flex-shrink-0 rounded-full transition-colors ${
+                          isGroupBooking ? 'bg-brand-500' : 'bg-gray-300'
+                        } ${canCreateGroupBooking ? '' : 'cursor-not-allowed opacity-50'} focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300`}
+                      >
+                        <span
+                          className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                            isGroupBooking ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="mt-4 grid gap-3 text-sm text-gray-600 sm:grid-cols-2 xl:grid-cols-1">
+                    <div>
+                      <label htmlFor="playerCount" className="mb-2 block text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+                        Players coming
+                      </label>
+                      <div className="relative">
+                        <select
+                          id="playerCount"
+                          value={playerCount}
+                          onChange={(event) => setPlayerCount(Number(event.target.value))}
+                          disabled={!selectedSlot}
+                          className="w-full appearance-none rounded-2xl border border-gray-200 bg-white px-4 py-3 pr-12 text-sm font-medium text-gray-700 outline-none transition-colors focus:border-brand-400 focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
+                        >
+                          {Array.from({ length: maxPlayerCount }, (_, index) => index + 1).map((count) => (
+                            <option key={count} value={count}>
+                              {count} player{count > 1 ? 's' : ''}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown size={18} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                      </div>
+                    </div>
                     <div className="flex items-center gap-2">
                       <Users size={16} className="text-gray-400" />
                       Minimum players: {selectedSlot.minPlayersRequired || 1}
