@@ -56,7 +56,7 @@ export const getOverviewStats = async (period = '30d') => {
                     lateCancelled: { $sum: { $cond: [{ $eq: ['$status', 'LateCancelled'] }, 1, 0] } }
                 }
             }
-        ]).maxTimeMS(5000),
+        ]).option({ maxTimeMS: 5000 }),
 
         // V2 bookings
         SportsBooking.aggregate([
@@ -70,7 +70,7 @@ export const getOverviewStats = async (period = '30d') => {
                     cancelled: { $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] } }
                 }
             }
-        ]).maxTimeMS(5000),
+        ]).option({ maxTimeMS: 5000 }),
 
         // Subscriptions
         SubscriptionV2.countDocuments({ status: 'Approved' }),
@@ -179,7 +179,7 @@ export const getBookingTrends = async (period = '30d', groupBy = 'day', facility
         },
         { $sort: { _id: 1 } },
         { $project: { _id: 0, label: '$_id', confirmed: 1, noShow: 1, cancelled: 1 } }
-    ]).maxTimeMS(5000);
+    ]).option({ maxTimeMS: 5000 });
 
     // Top facilities by booking count
     const topFacilities = await SportsBooking.aggregate([
@@ -204,7 +204,7 @@ export const getBookingTrends = async (period = '30d', groupBy = 'day', facility
                 bookingCount: 1
             }
         }
-    ]).maxTimeMS(5000);
+    ]).option({ maxTimeMS: 5000 });
 
     // Peak hours
     const peakHours = await SportsBooking.aggregate([
@@ -230,7 +230,7 @@ export const getBookingTrends = async (period = '30d', groupBy = 'day', facility
                 avgBookings: { $round: ['$count', 1] }
             }
         }
-    ]).maxTimeMS(5000);
+    ]).option({ maxTimeMS: 5000 });
 
     return { period, groupBy, series, topFacilities, peakHours };
 };
@@ -266,7 +266,7 @@ export const getSubscriptionTrends = async (period = '90d', facilityType = null)
                 netGrowth: { $subtract: ['$new', '$expired'] }
             }
         }
-    ]).maxTimeMS(5000);
+    ]).option({ maxTimeMS: 5000 });
 
     // Plan breakdown (active subscriptions)
     const planFilter = { status: 'Approved' };
@@ -276,7 +276,7 @@ export const getSubscriptionTrends = async (period = '90d', facilityType = null)
         { $match: planFilter },
         { $group: { _id: '$plan', count: { $sum: 1 } } },
         { $sort: { count: -1 } }
-    ]).maxTimeMS(5000);
+    ]).option({ maxTimeMS: 5000 });
 
     const totalActive = planCounts.reduce((sum, p) => sum + p.count, 0);
     const planBreakdown = planCounts.map(p => ({
