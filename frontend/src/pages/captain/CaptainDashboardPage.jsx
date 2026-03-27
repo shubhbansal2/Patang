@@ -69,8 +69,37 @@ const CaptainDashboardPage = () => {
     try {
       const { data } = await api.get('/facilities');
       const facs = data.data || data;
-      const captainFacilities = Array.isArray(facs) ? facs.filter(f => f.sportType === user.captainOf) : [];
-      setFacilities(captainFacilities);
+      
+      // The exact names the user wants to see in the dropdown:
+      const displayNames = [
+        'Tennis Court', 'Football Court', 'Badminton Court', 
+        'Cricket Ground', 'Squash Court', 'Swimming Pool', 
+        'Basketball Court', 'Athletics Ground', 'Table Tennis Court', 'Hockey Ground'
+      ];
+      
+      const captainFacilities = Array.isArray(facs) ? facs.filter(f => 
+        (user.captainOf && f.sportType === user.captainOf) || 
+        displayNames.some(d => f.name.toLowerCase().includes(d.toLowerCase().split(' ')[0])) // e.g. "Tennis" in "Tennis Court 1"
+      ) : [];
+
+      // Map raw facilities to clean display names and deduplicate
+      const uniqueCleanFacilities = [];
+      const seenNames = new Set();
+
+      captainFacilities.forEach(f => {
+        // Find which display name this raw facility belongs to
+        const matchedName = displayNames.find(d => f.name.toLowerCase().includes(d.toLowerCase().split(' ')[0])) || f.name;
+        
+        if (!seenNames.has(matchedName)) {
+          seenNames.add(matchedName);
+          uniqueCleanFacilities.push({
+            ...f,
+            displayName: matchedName // Store clean name for the UI
+          });
+        }
+      });
+      
+      setFacilities(uniqueCleanFacilities);
     } catch (err) {
       console.error("Failed to load facilities", err);
     }
@@ -215,9 +244,11 @@ const CaptainDashboardPage = () => {
             <ShieldCheck size={32} />
           </div>
           <h3 className="text-lg font-bold text-gray-800">{user?.name}</h3>
-          <p className="text-sm text-brand-500 font-semibold mt-1">Captain • {user?.captainOf || 'No Sport Assigned'}</p>
+          <p className="text-sm text-brand-500 font-semibold mt-1">
+            {user?.captainOf ? `${user.captainOf} Captain` : 'Captain'}
+          </p>
           <p className="text-xs text-gray-400 mt-3 px-4">
-            As captain, you can request and manage recurring team practice slots for your sport's facilities.
+            As captain, you can request and manage recurring team practice slots for all sports facilities.
           </p>
         </div>
         
@@ -254,10 +285,13 @@ const CaptainDashboardPage = () => {
                 >
                   <option value="">-- Choose Facility --</option>
                   {facilities.map(f => (
-                    <option key={f._id} value={f._id}>{f.name}</option>
+                    <option key={f._id} value={f._id}>{f.displayName}</option>
                   ))}
                   {facilities.length === 0 && <option value="" disabled>No facilities found for your sport</option>}
                 </select>
+                <p className="mt-2 text-[11px] text-red-600 bg-red-50 p-2 rounded-lg border border-red-100 leading-relaxed">
+                  <strong className="font-semibold">Note:</strong> You can directly book <strong className="font-semibold">{user?.captainOf || 'your sport\'s'}</strong> courts. If you wish to book a court or ground belonging to another sport, you will have to wait for the approval of that sport's team captain.
+                </p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

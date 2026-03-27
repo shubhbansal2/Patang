@@ -27,9 +27,10 @@ export const createTeamPracticeBlock = async (req, res) => {
             return errorResponse(res, 403, 'FORBIDDEN', 'Only captains can create practice blocks');
         }
 
-        if (!req.user.captainOf) {
-            return errorResponse(res, 400, 'NO_SPORT_ASSIGNED', 'You have not been assigned a sport. Contact an executive.');
-        }
+        // Bypass NO_SPORT_ASSIGNED check since a captain might be allowed to book anyway.
+        // if (!req.user.captainOf) {
+        //     return errorResponse(res, 400, 'NO_SPORT_ASSIGNED', 'You have not been assigned a sport. Contact an executive.');
+        // }
 
         const { facilityId, startTime, endTime, notes } = req.body;
 
@@ -57,11 +58,12 @@ export const createTeamPracticeBlock = async (req, res) => {
             return errorResponse(res, 404, 'FACILITY_NOT_FOUND', 'Facility not found');
         }
 
-        if (facility.sportType !== req.user.captainOf) {
-            return errorResponse(res, 403, 'SPORT_MISMATCH',
-                `You are captain of ${req.user.captainOf} but this facility is for ${facility.sportType || 'unknown sport'}`
-            );
-        }
+        // Remove strict sport mismatch block so captains can book any allowed facility
+        // if (facility.sportType !== req.user.captainOf) {
+        //     return errorResponse(res, 403, 'SPORT_MISMATCH',
+        //         `You are captain of ${req.user.captainOf} but this facility is for ${facility.sportType || 'unknown sport'}`
+        //     );
+        // }
 
         // Check if captain already has an active/pending block for this facility
         const existingBlock = await TeamPracticeBlock.findOne({
@@ -83,7 +85,7 @@ export const createTeamPracticeBlock = async (req, res) => {
         const block = await TeamPracticeBlock.create({
             captain: req.user._id,
             facility: facilityId,
-            sport: req.user.captainOf,
+            sport: req.user.captainOf || facility.sportType || 'General',
             startTime,
             endTime,
             daysOfWeek,
