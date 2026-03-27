@@ -90,10 +90,6 @@ const SubscriptionRegistrationView = ({
 
   const selectedPlan = data?.plans?.find((plan) => (plan._id || plan.planDuration || plan.name) === selectedPlanId) || data?.plans?.[0] || null;
   const subscription = data?.currentSubscription || null;
-  const occupancy = data?.slotAvailability || null;
-  const occupancyTotal = occupancy?.totalSlots || 0;
-  const occupancyRegistered = occupancy?.registered || 0;
-  const occupancyProgress = occupancyTotal > 0 ? Math.min(100, Math.round((occupancyRegistered / occupancyTotal) * 100)) : 0;
   const isFormLocked = Boolean(subscription);
 
   const handleSubmit = (event) => {
@@ -400,7 +396,7 @@ const SubscriptionRegistrationView = ({
               <div>
                 <h2 className="text-lg font-bold text-gray-800">Summary</h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  {subscription ? `Your current ${facilityType === 'Gym' ? 'gym' : 'swimming'} subscription status.` : 'The selected plan and current occupancy snapshot.'}
+                  {subscription ? `Your current ${facilityType === 'Gym' ? 'gym' : 'swimming'} subscription status.` : 'The selected plan that you are applying for.'}
                 </p>
               </div>
               {subscription ? <StatusBadge status={subscription.status} tone={getSubscriptionStatusTone(subscription.status)} /> : null}
@@ -457,23 +453,6 @@ const SubscriptionRegistrationView = ({
                 />
               </div>
             )}
-
-            <div className="mt-5 rounded-2xl border border-gray-100 p-4">
-              <div className="flex items-center gap-2">
-                <CreditCard size={16} className="text-brand-500" />
-                <p className="text-sm font-semibold text-gray-800">Occupancy snapshot</p>
-              </div>
-              <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-                <span>{occupancy?.registered || 0} registered</span>
-                <StatusBadge status={occupancy?.status || 'Unknown'} tone={getSubscriptionStatusTone(occupancy?.status)} />
-              </div>
-              <div className="mt-3 h-2.5 rounded-full bg-gray-100">
-                <div className="h-2.5 rounded-full bg-brand-500" style={{ width: `${occupancyProgress}%` }} />
-              </div>
-              <p className="mt-2 text-xs text-gray-500">
-                {occupancy?.available || 0} of {occupancy?.totalSlots || 0} slots currently available.
-              </p>
-            </div>
 
             <button
               type="submit"

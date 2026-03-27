@@ -42,12 +42,10 @@ const renderView = (overrides = {}) => {
 };
 
 describe('SwimmingRegistrationView', () => {
-  it('renders the swimming-specific copy and occupancy snapshot', () => {
+  it('renders the swimming-specific copy', () => {
     renderView();
 
     expect(screen.getByText(/swimming registration/i)).toBeInTheDocument();
-    expect(screen.getByText(/24 registered/i)).toBeInTheDocument();
-    expect(screen.getByText(/56 of 80 slots currently available/i)).toBeInTheDocument();
   });
 
   it('submits the selected swimming plan with uploaded documents', async () => {
