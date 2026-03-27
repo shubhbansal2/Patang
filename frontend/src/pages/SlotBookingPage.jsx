@@ -237,9 +237,7 @@ const SlotBookingPage = () => {
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand-500">Facilities</p>
           <h1 className="mt-1 text-2xl font-bold text-gray-800">Slot booking and registration</h1>
-          <p className="mt-2 text-sm text-gray-500">
-            Sports booking, gym registration, and swimming registration now live as separate sections so each flow feels more isolated and easier to test.
-          </p>
+            Book your preferred sports facilities or apply for specialized gym and swimming plans below.
         </div>
       </div>
 

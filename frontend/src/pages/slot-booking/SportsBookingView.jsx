@@ -220,7 +220,7 @@ const SportsBookingView = ({
               tone="warning"
               icon={Info}
               title="No sports configured"
-              description="The backend returned no active sports facilities, so the selector has no options yet. I can seed local sample facilities if you want more booking scenarios to test."
+              description="There are currently no active sports facilities available for booking."
             />
           ) : null}
 

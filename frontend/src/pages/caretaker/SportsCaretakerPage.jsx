@@ -404,7 +404,7 @@ const SportsCaretakerPage = () => {
               <ShieldAlert size={18} className="text-brand-500" />
               <div>
                 <h2 className="text-lg font-bold text-gray-800">Caretaker notes</h2>
-                <p className="mt-1 text-sm text-gray-500">These actions map directly to the backend attendance workflow.</p>
+                <p className="mt-1 text-sm text-gray-500">Log entries or search recent facility activity.</p>
               </div>
             </div>
             <ul className="mt-4 space-y-3 text-sm text-gray-600">
