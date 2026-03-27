@@ -96,6 +96,7 @@ export const apply = async (req, res) => {
 export const getMySubscriptions = async (req, res) => {
     try {
         const subscriptions = await SubscriptionV2.find({ userId: req.user._id })
+            .populate('slotId', 'startTime endTime')
             .sort({ createdAt: -1 });
 
         return successResponse(res, 200, subscriptions);

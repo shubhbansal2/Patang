@@ -43,7 +43,8 @@ export const getDashboard = async (req, res) => {
                 userId,
                 status: { $in: ['Pending', 'Approved'] }
             })
-                .select('facilityType plan status startDate endDate qrCode passId createdAt')
+                .select('facilityType plan status startDate endDate qrCode passId createdAt slotId')
+                .populate('slotId', 'startTime endTime')
                 .sort({ createdAt: -1 })
                 .maxTimeMS(5000)
                 .lean(),

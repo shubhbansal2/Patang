@@ -115,6 +115,7 @@ function App() {
               <Route path="/gym-admin/dashboard" element={<AppLayout><GymAdminDashboardPage /></AppLayout>} />
               <Route path="/gym-admin/requests" element={<AppLayout><GymAdminRequestsPage /></AppLayout>} />
               <Route path="/gym-admin/scanner" element={<AppLayout><GymAdminScannerPage /></AppLayout>} />
+              <Route path="/gym-admin/feedback" element={<AppLayout><FeedbackReportsPage /></AppLayout>} />
             </Route>
 
             {/* Swim Admin Routes */}
@@ -122,6 +123,7 @@ function App() {
               <Route path="/swim-admin/dashboard" element={<AppLayout><SwimAdminDashboardPage /></AppLayout>} />
               <Route path="/swim-admin/requests" element={<AppLayout><SwimAdminRequestsPage /></AppLayout>} />
               <Route path="/swim-admin/scanner" element={<AppLayout><SwimAdminScannerPage /></AppLayout>} />
+              <Route path="/swim-admin/feedback" element={<AppLayout><FeedbackReportsPage /></AppLayout>} />
             </Route>
 
             {/* Root redirect */}
