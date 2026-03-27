@@ -40,7 +40,7 @@ const SwimAdminRequestsPage = () => {
       setRequests(swimReqs);
     } catch (err) {
       console.error('Fetch requests error:', err);
-      setError(err.response?.data?.message || 'Failed to load subscription requests');
+      setError(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to load subscription requests');
     } finally {
       setLoading(false);
     }
@@ -87,7 +87,7 @@ const SwimAdminRequestsPage = () => {
       handleCloseModal();
     } catch (err) {
       console.error(`${actionType} error:`, err);
-      setActionError(err.response?.data?.message || `Failed to ${actionType} request`);
+      setActionError(err.response?.data?.error?.message || err.response?.data?.message || `Failed to ${actionType} request`);
     } finally {
       setSubmitting(false);
     }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  CalendarRange,
   CheckCircle2,
   CreditCard,
   FileText,
@@ -66,6 +67,7 @@ const SubscriptionRegistrationView = ({
   const meta = facilityMeta[facilityType] || facilityMeta.Gym;
   const FacilityIcon = meta.icon;
   const [selectedPlanId, setSelectedPlanId] = useState('');
+  const [selectedSlotId, setSelectedSlotId] = useState('');
   const [medicalCert, setMedicalCert] = useState(null);
   const [paymentReceipt, setPaymentReceipt] = useState(null);
   const [validationError, setValidationError] = useState('');
@@ -79,7 +81,12 @@ const SubscriptionRegistrationView = ({
     if (!selectedPlanId && data?.plans?.length) {
       setSelectedPlanId(data.plans[0]._id || data.plans[0].planDuration || data.plans[0].name);
     }
-  }, [data, selectedPlanId]);
+
+    if (!selectedSlotId && data?.slots?.length) {
+      const availableSlot = data.slots.find(s => s.registered < s.capacity) || data.slots[0];
+      setSelectedSlotId(availableSlot.id);
+    }
+  }, [data, selectedPlanId, selectedSlotId]);
 
   const selectedPlan = data?.plans?.find((plan) => (plan._id || plan.planDuration || plan.name) === selectedPlanId) || data?.plans?.[0] || null;
   const subscription = data?.currentSubscription || null;
@@ -111,6 +118,11 @@ const SubscriptionRegistrationView = ({
       return;
     }
 
+    if (!selectedSlotId) {
+      setValidationError('Select an available time slot before submitting.');
+      return;
+    }
+
     if (!medicalCert) {
       setValidationError('Upload your medical certificate before submitting.');
       return;
@@ -124,6 +136,7 @@ const SubscriptionRegistrationView = ({
     onSubmit({
       facilityType,
       plan: selectedPlan,
+      slotId: selectedSlotId,
       medicalCert,
       paymentReceipt,
     });
@@ -281,6 +294,56 @@ const SubscriptionRegistrationView = ({
                   <EmptyState
                     title={meta.emptyPlansTitle}
                     description={meta.emptyPlansDescription}
+                  />
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="rounded-2xl bg-brand-50 p-3 text-brand-600">
+                  <CalendarRange size={18} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-800">Select a time slot</h2>
+                  <p className="mt-1 text-sm text-gray-500">Pick an available time slot for your {facilityType.toLowerCase()} subscription. Some slots may be full.</p>
+                </div>
+              </div>
+
+              {data?.slots?.length ? (
+                <div className="mt-5 grid gap-4 grid-cols-2 sm:grid-cols-3">
+                  {data.slots.map((slot) => {
+                    const isSelected = slot.id === selectedSlotId;
+                    const isFull = slot.registered >= slot.capacity;
+                    return (
+                      <button
+                        key={slot.id}
+                        type="button"
+                        disabled={isFormLocked || isFull}
+                        onClick={() => setSelectedSlotId(slot.id)}
+                        className={`group relative flex flex-col items-center justify-center gap-1 rounded-2xl border p-4 text-center transition-all ${
+                          isSelected
+                            ? 'border-brand-500 bg-brand-50 shadow-[inset_0_0_0_1px_rgba(var(--brand-500),0.3)]'
+                            : isFull 
+                            ? 'border-red-100 bg-red-50 opacity-60 cursor-not-allowed'
+                            : 'border-gray-200 bg-gray-50 hover:border-brand-200 hover:bg-brand-50/50'
+                        } ${isFormLocked ? 'cursor-not-allowed opacity-70' : ''}`}
+                      >
+                        <p className={`text-sm font-bold ${isFull ? 'text-red-800' : 'text-gray-800'}`}>
+                          {slot.startTime} - {slot.endTime}
+                        </p>
+                        <p className={`text-[10px] font-semibold uppercase tracking-[0.1em] ${isFull ? 'text-red-500' : 'text-gray-500'}`}>
+                           {isFull ? 'Full capacity' : `${slot.capacity - slot.registered} slots left`}
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="mt-5">
+                  <EmptyState
+                    title="No slots available"
+                    description="There are no active time slots for this facility right now."
                   />
                 </div>
               )}
