@@ -187,7 +187,7 @@ export const getSubscriptionAnalytics = async (req, res) => {
 // 3. USER MANAGEMENT
 // ═════════════════════════════════════════════════════════════════════════════
 
-const EXECUTIVE_ASSIGNABLE_ROLES = ['student', 'faculty', 'caretaker', 'coach', 'coordinator', 'gym_admin', 'swim_admin'];
+const EXECUTIVE_ASSIGNABLE_ROLES = ['student', 'faculty', 'caretaker', 'captain', 'coordinator', 'gym_admin', 'swim_admin'];
 const ADMIN_ONLY_ROLES = ['executive', 'admin'];
 
 /**

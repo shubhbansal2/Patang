@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
 import loginBG from '../../assets/loginBG.jpg';
+import logo from '../../assets/logo.png';
 
 const RegisterPage = () => {
   const [step, setStep] = useState('register'); // 'register' | 'otp'
@@ -83,6 +84,11 @@ const RegisterPage = () => {
       style={{ backgroundImage: `url(${loginBG})` }}
     >
       <div className="absolute inset-0 bg-black/30" />
+
+      {/* Logo Container */}
+      <div className="absolute top-6 left-6 z-20">
+        <img src={logo} alt="Patang Logo" className="w-28 sm:w-36 h-auto drop-shadow-lg" />
+      </div>
 
       <div className="relative z-10 w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 sm:p-10">
         {error && (

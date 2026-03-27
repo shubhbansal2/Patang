@@ -57,7 +57,7 @@ const isWithinFacilitySlotWindow = async (facilityType, date = new Date()) => {
  */
 export const apply = async (req, res) => {
     try {
-        const { facilityType, plan } = req.body;
+        const { facilityType, plan, slotId } = req.body;
         const userId = req.user._id;
 
         const existing = await SubscriptionV2.findOne({
@@ -94,6 +94,7 @@ export const apply = async (req, res) => {
             userId,
             facilityType,
             plan,
+            slotId: slotId || null,
             medicalCertUrl: `/api/v2/subscriptions/${subscriptionId}/documents/medicalCert`,
             medicalCertFileId: medicalCertUpload.fileId,
             paymentReceiptUrl: `/api/v2/subscriptions/${subscriptionId}/documents/paymentReceipt`,

@@ -184,7 +184,7 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+        <nav className="flex-1 px-3 py-4 space-y-1">
           {/* ── Student nav (hidden for facility admins and pure caretakers) ── */}
           {!isFacilityAdmin && !isCaretakerOnly && studentItems.map(item => (
             <NavItem key={item.path} {...item} collapsed={collapsed} onClose={onClose} />
