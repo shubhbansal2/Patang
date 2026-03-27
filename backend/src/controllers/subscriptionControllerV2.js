@@ -312,7 +312,8 @@ export const verifyEntry = async (req, res) => {
         }
 
         const subscription = await SubscriptionV2.findOne({ passId: payload.passId })
-            .populate('userId', 'name email');
+            .populate('userId', 'name email')
+            .populate('slotId', 'startTime endTime');
 
         if (!subscription) {
             return errorResponse(res, 404, 'PASS_NOT_FOUND', 'Invalid pass ID');
@@ -352,9 +353,34 @@ export const verifyEntry = async (req, res) => {
             return errorResponse(res, 400, 'VALIDATION_ERROR', 'action must be entry or exit');
         }
 
+        const lastAccess = await getLatestAccessAction(subscription.userId._id, subscription.facilityType);
+
+        if (lastAccess) {
+            const msSinceLastScan = new Date() - new Date(lastAccess.scannedAt);
+            if (msSinceLastScan < 60000) {
+                return errorResponse(res, 429, 'TOO_MANY_REQUESTS', 'Please wait 1 minute between scans.');
+            }
+        }
+
         if (!action) {
-            const lastAccess = await getLatestAccessAction(subscription.userId._id, subscription.facilityType);
             action = lastAccess?.action === 'entry' ? 'exit' : 'entry';
+        } else if (action === lastAccess?.action) {
+            return errorResponse(res, 400, 'INVALID_STATE', `User is already marked as ${action === 'entry' ? 'Inside' : 'Outside'}.`);
+        }
+
+        if (action === 'entry' && subscription.slotId) {
+            const now = new Date();
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+            const [startHour, startMin] = subscription.slotId.startTime.split(':').map(Number);
+            const [endHour, endMin] = subscription.slotId.endTime.split(':').map(Number);
+
+            const slotStartMinutes = startHour * 60 + startMin;
+            const slotEndMinutes = endHour * 60 + endMin;
+
+            if (currentMinutes < slotStartMinutes - 15 || currentMinutes > slotEndMinutes) {
+                return errorResponse(res, 403, 'OUTSIDE_SLOT_HOURS', `Invalid entry time. Your slot is from ${subscription.slotId.startTime} to ${subscription.slotId.endTime}.`);
+            }
         }
 
         const accessLog = await createAccessLog({
