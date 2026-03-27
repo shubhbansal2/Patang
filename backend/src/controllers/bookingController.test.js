@@ -4,19 +4,29 @@ import { createChain, createMockRes } from '../test/helpers.js';
 const {
   sportsBookingFindByIdMock,
   sportsBookingFindMock,
+  sportsBookingFindOneMock,
   sportsBookingCountDocumentsMock,
   sportsSlotFindByIdMock,
   facilityBlockFindOneMock,
+  userFindOneMock,
 } = vi.hoisted(() => ({
   sportsBookingFindByIdMock: vi.fn(),
   sportsBookingFindMock: vi.fn(),
+  sportsBookingFindOneMock: vi.fn(),
   sportsBookingCountDocumentsMock: vi.fn(),
   sportsSlotFindByIdMock: vi.fn(),
   facilityBlockFindOneMock: vi.fn(),
+  userFindOneMock: vi.fn(),
 }));
 
 vi.mock('../models/Facility.js', () => ({
   default: {},
+}));
+
+vi.mock('../models/User.js', () => ({
+  default: {
+    findOne: userFindOneMock,
+  },
 }));
 
 vi.mock('../models/SportsSlot.js', () => ({
@@ -35,11 +45,12 @@ vi.mock('../models/SportsBooking.js', () => ({
   default: {
     findById: sportsBookingFindByIdMock,
     find: sportsBookingFindMock,
+    findOne: sportsBookingFindOneMock,
     countDocuments: sportsBookingCountDocumentsMock,
   },
 }));
 
-import { checkAvailability, updateBooking } from './bookingController.js';
+import { checkAvailability, listBookingsForCaretaker, updateBooking, verifyAttendeeForCaretaker } from './bookingController.js';
 
 describe('bookingController', () => {
   beforeEach(() => {
@@ -165,5 +176,76 @@ describe('bookingController', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body.isBlocked).toBe(true);
     expect(res.body.blockReason).toBe('Maintenance');
+  });
+
+  it('lists caretaker bookings scoped to assigned facilities', async () => {
+    sportsBookingFindMock.mockReturnValueOnce(createChain([
+      {
+        _id: 'booking-1',
+        status: 'confirmed',
+        attendanceStatus: 'pending',
+        slotStartAt: new Date('2026-03-27T01:30:00.000Z'),
+        slotEndAt: new Date('2026-03-27T02:30:00.000Z'),
+        participantCount: 2,
+        isGroupBooking: false,
+        facility: { _id: 'facility-1', name: 'Badminton Court 1', sportType: 'Badminton' },
+        slot: { startTime: '07:00', endTime: '08:00' },
+        user: { name: 'Patang Student', email: 'student@iitk.ac.in', profileDetails: { rollNumber: '230001' } },
+      },
+    ]));
+
+    const req = {
+      query: { date: '2026-03-27' },
+      user: { roles: ['caretaker'], profileDetails: { assignedFacilities: ['facility-1'] } },
+    };
+    const res = createMockRes();
+
+    await listBookingsForCaretaker(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.bookings).toHaveLength(1);
+    expect(res.body.bookings[0]).toEqual(
+      expect.objectContaining({
+        status: 'confirmed',
+        participantCount: 2,
+      })
+    );
+  });
+
+  it('verifies an attendee identifier against an active sports booking', async () => {
+    userFindOneMock.mockReturnValueOnce(createChain({
+      _id: 'user-1',
+      name: 'Patang Student',
+      email: 'student@iitk.ac.in',
+      profileDetails: { rollNumber: '230001' },
+    }));
+    sportsBookingFindOneMock.mockReturnValueOnce(createChain({
+      _id: 'booking-1',
+      status: 'confirmed',
+      attendanceStatus: 'pending',
+      slotStartAt: new Date('2026-03-27T01:30:00.000Z'),
+      slotEndAt: new Date('2026-03-27T02:30:00.000Z'),
+      participantCount: 2,
+      facility: { name: 'Badminton Court 1', sportType: 'Badminton' },
+      slot: { startTime: '07:00', endTime: '08:00' },
+      user: { name: 'Patang Student', email: 'student@iitk.ac.in', profileDetails: { rollNumber: '230001' } },
+    }));
+
+    const req = {
+      body: { identifier: '230001', bookingId: 'booking-1' },
+      user: { roles: ['caretaker'], profileDetails: { assignedFacilities: ['facility-1'] } },
+    };
+    const res = createMockRes();
+
+    await verifyAttendeeForCaretaker(req, res);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.valid).toBe(true);
+    expect(res.body.booking).toEqual(
+      expect.objectContaining({
+        status: 'confirmed',
+        participantCount: 2,
+      })
+    );
   });
 });
