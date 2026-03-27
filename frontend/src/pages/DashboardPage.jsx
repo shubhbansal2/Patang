@@ -243,7 +243,7 @@ const DashboardPage = () => {
                           </p>
                           <p className="text-sm font-bold text-gray-800 mt-1">
                             {isApproved
-                              ? (subscription.startDate ? formatTime(subscription.startDate) : '—')
+                              ? (subscription.slotId ? `${subscription.slotId.startTime} - ${subscription.slotId.endTime}` : '—')
                               : 'Awaiting approval'}
                           </p>
                         </div>
