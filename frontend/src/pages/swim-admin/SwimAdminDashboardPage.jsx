@@ -181,32 +181,9 @@ const SwimAdminDashboardPage = () => {
     );
   }
 
-  const swimOccupancy = data.occupancy?.find(o => o.facilityType?.toLowerCase() === 'swimmingpool') || { occupiedSlots: 0, totalSlots: 0 };
-
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-6">
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-gray-800">Facilities Overview</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <MetricTile
-              title="Pending Requests"
-              value={data.totalPending}
-              icon={ClipboardList}
-              colorClass={data.totalPending > 0 ? "text-amber-500" : "text-gray-800"}
-              linkTo="/swim-admin/requests"
-            />
-            <MetricTile
-              title="Live Occupancy"
-              value={`${swimOccupancy.occupiedSlots ?? 0} / ${swimOccupancy.totalSlots ?? '--'}`}
-              icon={Activity}
-              colorClass="text-blue-600"
-              linkTo="/swim-admin/scanner"
-            />
-          </div>
-        </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 flex flex-col h-full">
           <div className="flex items-center justify-between mb-4">
@@ -248,24 +225,16 @@ const SwimAdminDashboardPage = () => {
       </div>
 
       <div className="space-y-6">
+        {/* Quick Actions */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <h3 className="text-sm font-bold text-gray-800 mb-4">Quick Actions</h3>
-          <div className="space-y-2">
-            <Link to="/swim-admin/requests" className="w-full flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50 transition-colors group">
-              <div className="flex items-center gap-3">
-                <ClipboardList size={16} className="text-blue-500" />
-                <span className="text-sm font-semibold text-gray-700 group-hover:text-blue-700">Review Requests</span>
-              </div>
-              <ChevronRight size={16} className="text-gray-400 group-hover:text-blue-500" />
-            </Link>
-            <Link to="/swim-admin/scanner" className="w-full flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50 transition-colors group">
-              <div className="flex items-center gap-3">
-                <ScanLine size={16} className="text-blue-500" />
-                <span className="text-sm font-semibold text-gray-700 group-hover:text-blue-700">Scan QR Passes</span>
-              </div>
-              <ChevronRight size={16} className="text-gray-400 group-hover:text-blue-500" />
-            </Link>
-          </div>
+          <Link to="/swim-admin/scanner" className="w-full flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:border-blue-200 hover:bg-blue-50 transition-colors group">
+            <div className="flex items-center gap-3">
+              <ScanLine size={16} className="text-blue-500" />
+              <span className="text-sm font-semibold text-gray-700 group-hover:text-blue-700">Scan QR Passes</span>
+            </div>
+            <ChevronRight size={16} className="text-gray-400 group-hover:text-blue-500" />
+          </Link>
         </div>
 
         <SlotManager facilityType="swimming" />
