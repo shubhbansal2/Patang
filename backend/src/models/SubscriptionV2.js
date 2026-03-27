@@ -37,19 +37,19 @@ const subscriptionV2Schema = new mongoose.Schema({
     },
     medicalCertUrl: {
         type: String,
-        required: true
+        // required: true
     },
     medicalCertFileId: {
         type: mongoose.Schema.Types.ObjectId,
-        required: true
+        // required: true
     },
     paymentReceiptUrl: {
         type: String,
-        required: true
+        // required: true
     },
     paymentReceiptFileId: {
         type: mongoose.Schema.Types.ObjectId,
-        required: true
+        // required: true
     },
     // QR Pass
     qrCode: {
