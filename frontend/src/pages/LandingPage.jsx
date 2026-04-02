@@ -1,5 +1,6 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Activity, Zap, ChevronDown } from 'lucide-react';
+import { Calendar, Activity, Zap, ChevronDown, ChevronUp } from 'lucide-react';
 import logo from '../assets/logo.png';
 import loginBG from '../assets/loginBG.jpg';
 
@@ -22,6 +23,16 @@ const features = [
 ];
 
 const LandingPage = () => {
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > window.innerHeight / 2);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <div className="bg-sidebar font-sans scroll-smooth">
       {/* ───────────── HERO ───────────── */}
@@ -85,13 +96,15 @@ const LandingPage = () => {
           </div>
         </div>
 
-        {/* Scroll hint */}
-        <a
-          href="#features"
-          className="absolute bottom-8 z-10 text-white/40 hover:text-white/70 transition-colors animate-bounce"
-        >
-          <ChevronDown size={32} />
-        </a>
+        {/* Scroll hint / Back to top */}
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
+          <a
+            href={isScrolled ? "#hero" : "#features"}
+            className="text-white/40 hover:text-white/70 transition-colors animate-bounce block"
+          >
+            {isScrolled ? <ChevronUp size={32} /> : <ChevronDown size={32} />}
+          </a>
+        </div>
       </section>
 
       {/* ───────────── FEATURES ───────────── */}

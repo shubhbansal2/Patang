@@ -166,7 +166,9 @@ const Sidebar = ({ isOpen, onClose, collapsed, onToggleCollapse }) => {
       >
         {/* Logo + Hamburger toggle */}
         <div className={`flex items-center ${collapsed ? 'justify-center px-2' : 'px-6'} py-4 border-b border-white/10`}>
-          <img src={logo} alt="Patang" className={`object-contain flex-shrink-0 transition-all duration-300 ${collapsed ? 'w-10 h-10' : 'w-36 h-auto'}`} />
+          <Link to="/">
+            <img src={logo} alt="Patang" className={`object-contain flex-shrink-0 transition-all duration-300 hover:scale-105 ${collapsed ? 'w-10 h-10' : 'w-36 h-auto'}`} />
+          </Link>
 
           {!collapsed && <div className="flex-1" />}
 

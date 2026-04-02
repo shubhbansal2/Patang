@@ -38,7 +38,9 @@ const LoginPage = () => {
 
       {/* Logo Container */}
       <div className="absolute top-6 left-6 z-20">
-        <img src={logo} alt="Patang Logo" className="w-28 sm:w-36 h-auto drop-shadow-lg" />
+        <Link to="/">
+          <img src={logo} alt="Patang Logo" className="w-28 sm:w-36 h-auto drop-shadow-lg transition-transform hover:scale-105" />
+        </Link>
       </div>
 
       {/* Card */}
