@@ -4,7 +4,8 @@ import { ToastProvider } from './components/ui/ToastContainer';
 import ProtectedRoute, { getDefaultRoute } from './components/ProtectedRoute';
 import AppLayout from './layouts/AppLayout';
 
-// Auth pages
+// Public pages
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
@@ -48,7 +49,7 @@ import SwimAdminScannerPage from './pages/swim-admin/SwimAdminScannerPage';
 
 const HomeRedirect = () => {
   const { isAuthenticated, user } = useAuth();
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!isAuthenticated) return <LandingPage />;
   return <Navigate to={getDefaultRoute(user)} replace />;
 };
 

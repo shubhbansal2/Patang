@@ -78,6 +78,5 @@ noShowJob.start();
 subscriptionExpiryJob.start();
 slotGenerationJob.start();
 
-console.log('[Cron] All scheduled jobs started');
 
 export default app;

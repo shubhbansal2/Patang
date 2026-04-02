@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import app from './app.js';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const port = process.env.PORT || 5000;
 
