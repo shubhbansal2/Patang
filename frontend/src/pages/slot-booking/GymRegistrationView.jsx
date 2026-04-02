@@ -83,20 +83,12 @@ const SubscriptionRegistrationView = ({
     }
 
     if (!selectedSlotId && data?.slots?.length) {
-      const availableSlot = data.slots.find(s => s.activeCount < s.capacity && !isSlotPast(s)) || data.slots.find(s => !isSlotPast(s)) || data.slots[0];
+      const availableSlot = data.slots.find(s => s.activeCount < s.capacity) || data.slots[0];
       setSelectedSlotId(availableSlot._id);
     }
   }, [data, selectedPlanId, selectedSlotId]);
 
-  // Check if a slot's end time has already passed for today
-  const isSlotPast = (slot) => {
-    if (!slot?.endTime) return false;
-    const [hours, minutes] = slot.endTime.split(':').map(Number);
-    const now = new Date();
-    const slotEnd = new Date();
-    slotEnd.setHours(hours, minutes, 0, 0);
-    return now > slotEnd;
-  };
+
 
   const selectedPlan = data?.plans?.find((plan) => (plan._id || plan.planDuration || plan.name) === selectedPlanId) || data?.plans?.[0] || null;
   const subscription = data?.currentSubscription || null;
@@ -319,8 +311,7 @@ const SubscriptionRegistrationView = ({
                   {data.slots.map((slot) => {
                     const isSelected = slot._id === selectedSlotId;
                     const isFull = slot.activeCount >= slot.capacity;
-                    const isPast = isSlotPast(slot);
-                    const isDisabled = isFormLocked || isFull || isPast;
+                    const isDisabled = isFormLocked || isFull;
                     return (
                       <button
                         key={slot._id}
@@ -328,20 +319,18 @@ const SubscriptionRegistrationView = ({
                         disabled={isDisabled}
                         onClick={() => setSelectedSlotId(slot._id)}
                         className={`group relative flex flex-col items-center justify-center gap-1 rounded-2xl border p-4 text-center transition-all ${
-                          isSelected && !isPast
+                          isSelected
                             ? 'border-brand-500 bg-brand-50 shadow-[inset_0_0_0_1px_rgba(var(--brand-500),0.3)]'
-                            : isPast
-                            ? 'border-gray-200 bg-gray-100 opacity-50 cursor-not-allowed'
                             : isFull 
                             ? 'border-red-100 bg-red-50 opacity-60 cursor-not-allowed'
                             : 'border-gray-200 bg-gray-50 hover:border-brand-200 hover:bg-brand-50/50'
                         } ${isFormLocked ? 'cursor-not-allowed opacity-70' : ''}`}
                       >
-                        <p className={`text-sm font-bold ${isPast ? 'text-gray-400 line-through' : isFull ? 'text-red-800' : 'text-gray-800'}`}>
+                        <p className={`text-sm font-bold ${isFull ? 'text-red-800' : 'text-gray-800'}`}>
                           {slot.startTime} - {slot.endTime}
                         </p>
-                        <p className={`text-[10px] font-semibold uppercase tracking-[0.1em] ${isPast ? 'text-gray-400' : isFull ? 'text-red-500' : 'text-gray-500'}`}>
-                           {isPast ? 'Time passed' : isFull ? 'Full capacity' : `${slot.spotsLeft} slots left`}
+                        <p className={`text-[10px] font-semibold uppercase tracking-[0.1em] ${isFull ? 'text-red-500' : 'text-gray-500'}`}>
+                           {isFull ? 'Full capacity' : `${slot.spotsLeft} slots left`}
                         </p>
                       </button>
                     )
