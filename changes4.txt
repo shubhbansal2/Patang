@@ -1,0 +1,11 @@
+﻿commit 75ce9c70107ab875ff1adfdd0686d9912a76fc03
+Author: ShubhBansal <shubhbansal2005@gmail.com>
+Date:   Fri Apr 3 00:18:09 2026 +0530
+
+    bug fixes
+
+frontend/src/layouts/AppLayout.jsx
+frontend/src/pages/LandingPage.jsx
+frontend/src/pages/auth/ForgotPasswordPage.jsx
+frontend/src/pages/auth/LoginPage.jsx
+frontend/src/pages/auth/RegisterPage.jsx
