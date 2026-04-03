@@ -322,15 +322,14 @@ const SubscriptionScannerPage = ({
 
           <div className="p-8 flex-1 flex flex-col justify-center">
             <div className="w-full aspect-square max-w-[240px] mx-auto bg-gray-950 border-2 border-dashed border-gray-300 rounded-3xl flex items-center justify-center mb-4 relative overflow-hidden">
-              {cameraState === 'ready' ? (
-                <video
+              <video
                   ref={videoRef}
-                  className="absolute inset-0 h-full w-full object-cover"
+                  className={`absolute inset-0 h-full w-full object-cover ${cameraState === 'ready' ? '' : 'hidden'}`}
                   autoPlay
                   muted
                   playsInline
                 />
-              ) : (
+              {cameraState !== 'ready' && (
                 <div className="absolute inset-0 bg-gray-50" />
               )}
 
