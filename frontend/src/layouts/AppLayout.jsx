@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import logo from '../assets/logo.png';
@@ -418,7 +418,7 @@ const Topbar = ({ onMenuToggle }) => {
           {showNotif && (
             <>
               <div className="fixed inset-0 z-40" onClick={() => setShowNotif(false)} />
-              <div className="absolute right-0 top-12 z-50 w-80 bg-white rounded-xl shadow-xl border border-gray-100 py-3">
+              <div className="absolute right-0 top-12 z-50 w-[calc(100vw-2rem)] sm:w-80 max-w-sm bg-white rounded-xl shadow-xl border border-gray-100 py-3">
                 <div className="px-4 pb-2 border-b border-gray-50 flex items-center justify-between">
                   <p className="text-sm font-semibold text-gray-800">
                     Notifications {unreadCount > 0 && <span className="ml-1 bg-brand-100 text-brand-600 text-xs px-2 py-0.5 rounded-full">{unreadCount}</span>}

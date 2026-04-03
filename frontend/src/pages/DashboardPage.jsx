@@ -316,7 +316,7 @@ const DashboardPage = () => {
           {upcomingBookings.length > 0 ? (
             <div className="space-y-3">
               {upcomingBookings.slice(0, 5).map((booking) => (
-                <div key={booking._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-center justify-between">
+                <div key={booking._id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center flex-shrink-0">
                       <FacilityIcon name={booking.facilityName || booking.sportType} />
@@ -334,7 +334,7 @@ const DashboardPage = () => {
                       ) : null}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <StatusBadge status={booking.status} />
                     {booking.source === 'v2' ? (
                       <button

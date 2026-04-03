@@ -153,7 +153,7 @@ const HistoryPage = () => {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-1">
         <div>
           <p className="text-xs text-gray-400 mb-0.5">Home / <span className="text-gray-600 font-medium">History</span></p>
           <h1 className="text-2xl font-bold text-gray-800">Activity History</h1>
@@ -174,11 +174,11 @@ const HistoryPage = () => {
       </div>
 
       {/* Two-column layout */}
-      <div className="flex gap-6 mt-5">
+      <div className="flex flex-col lg:flex-row gap-6 mt-5">
         {/* ─── Main Content ────────────────────────────────────────── */}
         <div className="flex-1 min-w-0">
           {/* Tab Bar + Filters */}
-          <div className="flex flex-wrap items-center gap-3 mb-5">
+          <div className="flex flex-wrap items-center gap-3 mb-5 overflow-x-auto pb-1">
             {/* Tabs */}
             <div className="flex bg-gray-50 rounded-xl p-1 border border-gray-100">
               {tabs.map(({ key, label, icon: Icon }) => (
@@ -245,7 +245,7 @@ const HistoryPage = () => {
           </div>
 
           {/* ── Data Table ─────────────────────────────────────────── */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden overflow-x-auto">
             {loading ? (
               <div className="flex items-center justify-center py-20">
                 <div className="w-8 h-8 border-3 border-brand-500 border-t-transparent rounded-full animate-spin" />
@@ -259,7 +259,7 @@ const HistoryPage = () => {
             ) : (
               <>
                 {/* Table Header */}
-                <div className="grid grid-cols-[160px_1fr_150px_130px_60px] gap-4 px-6 py-3 bg-gray-50/80 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <div className="grid grid-cols-[160px_1fr_150px_130px_60px] gap-4 px-6 py-3 bg-gray-50/80 border-b border-gray-100 text-xs font-semibold text-gray-400 uppercase tracking-wider min-w-[700px]">
                   <span>Date</span>
                   <span>Activity Details</span>
                   <span>Slot Time / Type</span>
@@ -270,7 +270,7 @@ const HistoryPage = () => {
                 {/* Table Rows */}
                 {filteredRecords.map((record, idx) => (
                   <div key={record._id || idx}
-                    className={`grid grid-cols-[160px_1fr_150px_130px_60px] gap-4 px-6 py-4 items-center border-b border-gray-50 hover:bg-gray-50/50 transition-colors ${
+                    className={`grid grid-cols-[160px_1fr_150px_130px_60px] gap-4 px-6 py-4 items-center border-b border-gray-50 hover:bg-gray-50/50 transition-colors min-w-[700px] ${
                       idx % 2 === 0 ? '' : 'bg-gray-50/30'
                     }`}>
 
@@ -377,7 +377,7 @@ const HistoryPage = () => {
         </div>
 
         {/* ─── Sidebar ─────────────────────────────────────────────── */}
-        <div className="w-72 flex-shrink-0 space-y-5">
+        <div className="w-full lg:w-72 lg:flex-shrink-0 space-y-5">
           {/* Recent Penalties */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <div className="flex items-center justify-between mb-4">

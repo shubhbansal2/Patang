@@ -92,7 +92,7 @@ const UserManagementPage = () => {
                 </select>
             </div>
 
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden text-sm w-full">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-x-auto text-sm w-full">
                 {loading ? (
                     <div className="p-10 text-center text-gray-500">Loading...</div>
                 ) : (

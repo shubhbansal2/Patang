@@ -122,12 +122,12 @@ const CalendarPage = () => {
       </div>
 
       {/* Two-column Layout */}
-      <div className="flex gap-6">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* ─── Main: Calendar Grid ─────────────────────────────────── */}
         <div className="flex-1 min-w-0">
           {/* Month Navigation + Category Filter */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-5">
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
               <div className="flex items-center gap-3">
                 <button onClick={() => navigateMonth(-1)}
                   className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-all">
@@ -143,7 +143,7 @@ const CalendarPage = () => {
               </div>
 
               {/* Category Filters */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
                 <Filter size={14} className="text-gray-400" />
                 <button onClick={() => { setCategoryFilter(''); setSelectedDate(null); }}
                   className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
@@ -308,7 +308,7 @@ const CalendarPage = () => {
         </div>
 
         {/* ─── Sidebar ─────────────────────────────────────────────── */}
-        <div className="w-80 flex-shrink-0 space-y-5">
+        <div className="w-full lg:w-80 lg:flex-shrink-0 space-y-5">
           {/* Event Detail */}
           {selectedEvent && (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">

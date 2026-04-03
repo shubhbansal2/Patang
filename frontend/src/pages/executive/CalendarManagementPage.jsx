@@ -288,7 +288,7 @@ const CalendarManagementPage = () => {
                             </div>
 
                             {/* Times in a row */}
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-800 mb-2">
                                         Start Time <span className="text-red-500">*</span>
@@ -403,7 +403,7 @@ const CalendarManagementPage = () => {
                             </div>
 
                             {/* Category + Organizing Club row */}
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-800 mb-2">
                                         Category <span className="text-red-500">*</span>
@@ -433,7 +433,7 @@ const CalendarManagementPage = () => {
                             </div>
 
                             {/* Times */}
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-800 mb-2">
                                         Start Time <span className="text-red-500">*</span>

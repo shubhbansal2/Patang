@@ -111,7 +111,7 @@ const FeedbackPage = () => {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div>
           <p className="text-xs text-gray-400 mb-0.5">Home / <span className="text-gray-600 font-medium">Feedback</span></p>
           <h1 className="text-2xl font-bold text-gray-800">Feedback Portal</h1>
@@ -127,7 +127,7 @@ const FeedbackPage = () => {
         </button>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* ─── Main Content ────────────────────────────────────────── */}
         <div className="flex-1 min-w-0">
           {/* ── Submit Form ────────────────────────────────────────── */}
@@ -144,7 +144,7 @@ const FeedbackPage = () => {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Row 1: Recipient + Category */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Send To *</label>
                     <select value={targetRole} onChange={e => setTargetRole(e.target.value)}
@@ -200,7 +200,7 @@ const FeedbackPage = () => {
           )}
 
           {/* ── Status Filter Pills ───────────────────────────────── */}
-          <div className="flex items-center gap-2 mb-5">
+          <div className="flex items-center gap-2 mb-5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
             <Filter size={14} className="text-gray-400" />
             <button onClick={() => { setStatusFilter(''); setPage(1); }}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all ${
@@ -326,7 +326,7 @@ const FeedbackPage = () => {
         </div>
 
         {/* ─── Sidebar ─────────────────────────────────────────────── */}
-        <div className="w-72 flex-shrink-0 space-y-5">
+        <div className="w-full lg:w-72 lg:flex-shrink-0 space-y-5">
           {/* Stats Overview */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <div className="flex items-center gap-2 mb-4">

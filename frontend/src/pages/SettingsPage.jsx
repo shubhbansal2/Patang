@@ -145,7 +145,7 @@ const SettingsPage = () => {
         <h1 className="text-2xl font-bold text-gray-800">Settings</h1>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* ─── Main Content ────────────────────────────────────────── */}
         <div className="flex-1 min-w-0 space-y-5">
           {/* ── Profile Information ────────────────────────────────── */}
@@ -168,11 +168,11 @@ const SettingsPage = () => {
             )}
 
             <form onSubmit={handleSaveProfile} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Full Name" icon={User} value={name} onChange={e => setName(e.target.value)} placeholder="Your full name" />
                 <Field label="Email Address" icon={Mail} value={profile?.email} disabled placeholder="Email" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {authUser?.roles?.includes('student') && (
                   <Field label="Roll Number" icon={Hash} value={profile?.profileDetails?.rollNumber} disabled placeholder="Roll number" />
                 )}
@@ -227,7 +227,7 @@ const SettingsPage = () => {
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">New Password</label>
                   <div className="relative">
@@ -263,7 +263,7 @@ const SettingsPage = () => {
         </div>
 
         {/* ─── Sidebar ─────────────────────────────────────────────── */}
-        <div className="w-72 flex-shrink-0 space-y-5">
+        <div className="w-full lg:w-72 lg:flex-shrink-0 space-y-5">
           {/* Account Status */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
             <div className="flex items-center gap-2 mb-4">

@@ -105,3 +105,25 @@ body {
 .animate-float {
   animation: float 4s ease-in-out infinite;
 }
+
+/* Hide scrollbar but keep scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile safe area padding */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Prevent text overflow on small screens */
+.break-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}

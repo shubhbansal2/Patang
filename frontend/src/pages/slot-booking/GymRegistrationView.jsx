@@ -160,7 +160,7 @@ const SubscriptionRegistrationView = ({
         }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.75fr)_360px]">
+      <div className="grid gap-6 lg:grid-cols-1 xl:grid-cols-[minmax(0,1.75fr)_300px]">
         <div className="space-y-6">
           {subscription ? (
             <InlineBanner

@@ -141,7 +141,7 @@ const SportsBookingView = ({
         }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(360px,0.95fr)]">
+      <div className="grid gap-6 lg:grid-cols-1 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.95fr)]">
         <div className="space-y-6">
           <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -398,7 +398,7 @@ const SportsBookingView = ({
           </div>
         </div>
 
-        <aside className="space-y-6 xl:sticky xl:top-20 xl:self-start">
+        <aside className="space-y-6 xl:sticky xl:top-20 xl:self-start order-first xl:order-last">
           <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
