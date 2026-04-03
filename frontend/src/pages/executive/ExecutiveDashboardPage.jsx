@@ -139,13 +139,13 @@ const ExecutiveDashboardPage = () => {
                         <div className="bg-gray-50 rounded-xl px-4 py-3">
                             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Gym Capacity</p>
                             <p className="text-lg font-bold text-gray-800 mt-1">
-                                {systemHealth.gymOccupancy?.currentOccupancy || 0} / {systemHealth.gymOccupancy?.totalCapacity || 0}
+                                {systemHealth.gymOccupancy?.occupiedSlots || 0} / {systemHealth.gymOccupancy?.totalSlots || 0}
                             </p>
                         </div>
                         <div className="bg-gray-50 rounded-xl px-4 py-3">
                             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Pool Capacity</p>
                             <p className="text-lg font-bold text-gray-800 mt-1">
-                                {systemHealth.poolOccupancy?.currentOccupancy || 0} / {systemHealth.poolOccupancy?.totalCapacity || 0}
+                                {systemHealth.poolOccupancy?.occupiedSlots || 0} / {systemHealth.poolOccupancy?.totalSlots || 0}
                             </p>
                         </div>
                     </div>

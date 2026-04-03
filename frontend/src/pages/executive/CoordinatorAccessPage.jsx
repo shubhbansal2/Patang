@@ -8,7 +8,7 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { fetchUsers, updateUserRoles } from '../../services/executiveApi';
 import { Search, Users, AlertTriangle, Shield } from 'lucide-react';
 
-const ASSIGNABLE_ROLES = ['student', 'faculty', 'caretaker', 'captain', 'coordinator', 'gym_admin', 'swim_admin'];
+const ASSIGNABLE_ROLES = ['coordinator'];
 
 const CoordinatorAccessPage = () => {
     const { showSuccess, showError } = useToast();

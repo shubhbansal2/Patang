@@ -39,11 +39,21 @@ const UserManagementPage = () => {
     const handleSaveRoles = async () => {
         setSaving(true);
         try {
-            await api.patch(`/executive/users/${editingUser._id}/roles`, { roles: newRoles });
+            const oldRoles = editingUser.roles || [];
+            const rolesToAdd = newRoles.filter(r => !oldRoles.includes(r));
+            const rolesToRemove = oldRoles.filter(r => !newRoles.includes(r));
+
+            for (const role of rolesToAdd) {
+                await api.patch(`/executive/users/${editingUser._id}/roles`, { action: 'add', role });
+            }
+            for (const role of rolesToRemove) {
+                await api.patch(`/executive/users/${editingUser._id}/roles`, { action: 'remove', role });
+            }
+
             setUsers(users.map(u => u._id === editingUser._id ? { ...u, roles: newRoles } : u));
             setEditingUser(null);
         } catch (err) {
-            alert('Failed to update roles');
+            alert(err.response?.data?.message || 'Failed to update roles');
         } finally {
             setSaving(false);
         }
@@ -143,7 +153,7 @@ const UserManagementPage = () => {
                             <h3 className="text-lg font-bold">Edit Roles: {editingUser.name}</h3>
                         </div>
                         <div className="space-y-3 mb-6">
-                            {['student', 'faculty', 'coordinator', 'executive'].map(r => (
+                            {['student', 'faculty', 'caretaker', 'captain', 'coordinator', 'gym_admin', 'swim_admin'].map(r => (
                                 <label key={r} className="flex items-center gap-3 p-3 border rounded-xl cursor-pointer hover:bg-gray-50">
                                     <input
                                         type="checkbox"
@@ -154,7 +164,7 @@ const UserManagementPage = () => {
                                         }}
                                         className="w-4 h-4 text-brand-500 rounded focus:ring-brand-500"
                                     />
-                                    <span className="capitalize text-sm font-semibold">{r}</span>
+                                    <span className="capitalize text-sm font-semibold">{r.replace('_', ' ')}</span>
                                 </label>
                             ))}
                         </div>
