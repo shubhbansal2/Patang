@@ -45,7 +45,7 @@ const GymAdminRequestsPage = () => {
     setError('');
     try {
       // Pass the selected status to the API
-      const { data } = await api.get(`/v2/admin/subscriptions?status=${statusFilter}&limit=50`);
+      const { data } = await api.get(`/v2/admin/subscriptions?status=${statusFilter}&limit=5000`);
       setRequests(data.data?.subscriptions || []);
     } catch (err) {
       console.error('Fetch requests error:', err);

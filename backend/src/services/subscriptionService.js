@@ -17,14 +17,30 @@ export const generatePassId = async (facilityType) => {
     const prefix = facilityType === 'Gym' ? 'GYM' : 'POOL';
     const year = new Date().getFullYear();
     
-    // Count existing passes for this year and type to get next sequence
+    // Count existing passes for this year and type as a baseline
     const count = await SubscriptionV2.countDocuments({
         facilityType,
         passId: { $regex: `^${prefix}-${year}-` }
     });
 
-    const seq = String(count + 1).padStart(3, '0');
-    return `${prefix}-${year}-${seq}`;
+    let seqBase = count + 1;
+    let passId = '';
+    let isUnique = false;
+
+    // Loop to ensure the generated passId genuinely doesn't exist yet
+    while (!isUnique) {
+        const seq = String(seqBase).padStart(3, '0');
+        passId = `${prefix}-${year}-${seq}`;
+        
+        const existing = await SubscriptionV2.findOne({ passId });
+        if (!existing) {
+            isUnique = true;
+        } else {
+            seqBase++;
+        }
+    }
+
+    return passId;
 };
 
 /**

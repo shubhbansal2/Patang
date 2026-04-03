@@ -136,12 +136,12 @@ export const submitEvent = async (req, res) => {
 
         const eventData = {
             title: title.trim(),
-            description: description?.trim() || null,
+            description: description?.trim() || '',
             category,
             startTime: start,
             endTime: end,
-            venue: venue?.trim() || null,
-            organizingClub: organizingClub?.trim() || null,
+            venue: venue?.trim() || '',
+            organizingClub: organizingClub?.trim() || '',
             registrationLink: registrationLink?.trim() || null,
             createdBy: req.user._id,
             status: 'Pending'  // All events go to executive for review

@@ -44,7 +44,7 @@ const SwimAdminRequestsPage = () => {
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.get(`/v2/admin/subscriptions?status=${statusFilter}&limit=100`);
+      const { data } = await api.get(`/v2/admin/subscriptions?status=${statusFilter}&limit=5000`);
       // Backend stores swimming subscriptions as "SwimmingPool".
       const swimReqs = (data.data?.subscriptions || []).filter(
         (r) => r.facilityType?.toLowerCase().includes('swimming')

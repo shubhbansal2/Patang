@@ -7,7 +7,8 @@ const eventSchema = new mongoose.Schema({
     },
     description: {
         type: String,
-        required: true
+        required: false,
+        default: ''
     },
     category: {
         type: String,
@@ -33,7 +34,8 @@ const eventSchema = new mongoose.Schema({
     },
     organizingClub: {
         type: String,
-        required: true
+        required: false,
+        default: ''
     },
     registrationLink: {
         type: String,

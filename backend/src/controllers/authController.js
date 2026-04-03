@@ -27,7 +27,11 @@ export const registerUser = async (req, res) => {
         const userExists = await User.findOne({ email });
 
         if (userExists) {
-            return res.status(400).json({ message: "User already exists" });
+            if (userExists.isVerified) {
+                return res.status(400).json({ message: "User already exists" });
+            } else {
+                await User.deleteOne({ _id: userExists._id });
+            }
         }
 
         const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -38,6 +42,7 @@ export const registerUser = async (req, res) => {
             password,
             roles: [userType || 'student'],
             otp: generatedOtp,
+            otpExpires: Date.now() + 10 * 60 * 1000,
             profileDetails: { rollNumber: finalRollNumber }
         });
 
@@ -123,8 +128,13 @@ export const verifyOtp = async (req, res) => {
         const user = await User.findOne({ email });
 
         if (user && user.otp === otp) {
+            if (user.otpExpires && user.otpExpires < Date.now()) {
+                return res.status(400).json({ message: "OTP has expired. Please request a new one." });
+            }
+
             user.isVerified = true;
             user.otp = undefined;
+            user.otpExpires = undefined;
             await user.save();
 
             res.status(200).json({
