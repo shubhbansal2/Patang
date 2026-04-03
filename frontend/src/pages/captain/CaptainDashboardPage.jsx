@@ -42,6 +42,34 @@ const StatusBadge = ({ status }) => {
   );
 };
 
+const FormattedDateInput = ({ value, onChange, min }) => {
+  const displayValue = value ? value.split('-').reverse().join('/') : '';
+  
+  return (
+    <div className="relative flex items-center group">
+      <input
+        type="text"
+        className="w-full text-sm border border-gray-200 rounded-xl pl-4 pr-10 py-2.5 outline-none bg-white font-medium text-gray-800 transition-colors group-focus-within:border-brand-500 group-focus-within:ring-1 group-focus-within:ring-brand-500"
+        value={displayValue}
+        placeholder="DD/MM/YYYY"
+        readOnly
+        tabIndex="-1"
+      />
+      <div className="absolute right-4 text-gray-400 pointer-events-none transition-colors group-focus-within:text-brand-500">
+        <Calendar size={16} />
+      </div>
+      <input
+        type="date"
+        required
+        min={min}
+        value={value}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+};
+
 const CaptainDashboardPage = () => {
   const { user } = useAuth();
   const [blocks, setBlocks] = useState([]);
@@ -197,7 +225,7 @@ const CaptainDashboardPage = () => {
               {blocks.map((block) => (
                 <div key={block._id} className="bg-gray-50 rounded-xl border border-gray-200 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <h4 className="text-sm font-bold text-gray-800">{block.facility?.name || 'Facility'}</h4>
+                    <h4 className="text-sm font-bold text-gray-800">{block.facility?.name ? block.facility.name.replace(/\s+\d+$/, '') : 'Facility'}</h4>
                     <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
                       <Calendar size={12} />
                       {formatDate(block.practiceDate)} • {formatTime(block.startTime)} to {formatTime(block.endTime)}
@@ -310,13 +338,10 @@ const CaptainDashboardPage = () => {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5">Practice Date</label>
-                <input
-                  type="date"
-                  required
+                <FormattedDateInput
                   min={getTodayValue()}
-                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 outline-none"
                   value={formData.practiceDate}
-                  onChange={(e) => setFormData({ ...formData, practiceDate: e.target.value })}
+                  onChange={(val) => setFormData({ ...formData, practiceDate: val })}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -378,13 +403,10 @@ const CaptainDashboardPage = () => {
             <form onSubmit={handleEditSubmit} className="p-5 space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1.5">Practice Date</label>
-                <input
-                  type="date"
-                  required
+                <FormattedDateInput
                   min={getTodayValue()}
-                  className="w-full text-sm border border-gray-200 rounded-xl px-4 py-2.5 outline-none"
                   value={editData.practiceDate}
-                  onChange={(e) => setEditData({ ...editData, practiceDate: e.target.value })}
+                  onChange={(val) => setEditData({ ...editData, practiceDate: val })}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
