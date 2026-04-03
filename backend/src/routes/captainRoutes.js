@@ -3,6 +3,8 @@ import { protectRoute, authorizeRoles } from '../middlewares/authMiddleware.js';
 import {
     createTeamPracticeBlock,
     getMyPracticeBlocks,
+    getIncomingPracticeBlockRequests,
+    reviewIncomingPracticeBlock,
     editTeamPracticeBlock,
     cancelTeamPracticeBlock
 } from '../controllers/captainController.js';
@@ -17,6 +19,12 @@ router.post('/practice-blocks', ...captainAuth, createTeamPracticeBlock);
 
 // GET    /api/captain/practice-blocks       — view my practice blocks
 router.get('/practice-blocks', ...captainAuth, getMyPracticeBlocks);
+
+// GET    /api/captain/practice-blocks/incoming — review requests routed to this captain
+router.get('/practice-blocks/incoming', ...captainAuth, getIncomingPracticeBlockRequests);
+
+// PATCH  /api/captain/practice-blocks/:blockId/review — approve/reject an incoming request
+router.patch('/practice-blocks/:blockId/review', ...captainAuth, reviewIncomingPracticeBlock);
 
 // PATCH  /api/captain/practice-blocks/:blockId — edit practice timings (resets to pending)
 router.patch('/practice-blocks/:blockId', ...captainAuth, editTeamPracticeBlock);

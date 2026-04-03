@@ -1,6 +1,7 @@
 import Facility from '../models/Facility.js';
 import TeamPracticeBlock from '../models/TeamPracticeBlock.js';
 import SportsBooking from '../models/SportsBooking.js';
+import User from '../models/User.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
 
 const normalizeSport = (value) => String(value || '').trim().toLowerCase();
@@ -28,6 +29,22 @@ const resolveOperationalFacility = async (facilityId) => {
     }).lean();
 
     return canonicalFacility || facility;
+};
+
+const findTargetCaptain = async (requestingCaptainId, facilitySport) => {
+    const normalizedFacilitySport = String(facilitySport || '').trim();
+    if (!normalizedFacilitySport) {
+        return null;
+    }
+
+    return User.findOne({
+        roles: 'captain',
+        captainOf: normalizedFacilitySport,
+        status: 'active',
+        _id: { $ne: requestingCaptainId }
+    })
+        .select('_id name email captainOf')
+        .lean();
 };
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -126,6 +143,9 @@ export const createTeamPracticeBlock = async (req, res) => {
         const daysOfWeek = [startOfRequestedDay.getDay()];
 
         const selfApproved = canCaptainSelfApprove(req.user.captainOf, facility.sportType);
+        const targetCaptain = selfApproved
+            ? null
+            : await findTargetCaptain(req.user._id, facility.sportType);
 
         const block = await TeamPracticeBlock.create({
             captain: req.user._id,
@@ -136,8 +156,15 @@ export const createTeamPracticeBlock = async (req, res) => {
             endTime,
             daysOfWeek,
             status: selfApproved ? 'approved' : 'pending',
+            targetCaptain: targetCaptain?._id || null,
             notes: notes?.trim() || null
         });
+
+        const responseMessage = selfApproved
+            ? 'Practice block approved and reserved immediately.'
+            : targetCaptain
+                ? `Practice block request submitted for ${targetCaptain.captainOf || facility.sportType} captain approval.`
+                : 'Practice block request submitted for executive approval.';
 
         return successResponse(res, 201, {
             _id: block._id,
@@ -148,12 +175,16 @@ export const createTeamPracticeBlock = async (req, res) => {
             endTime: block.endTime,
             daysOfWeek: block.daysOfWeek,
             status: block.status,
-            message: selfApproved
-                ? 'Practice block approved and reserved immediately.'
-                : 'Practice block request submitted for executive approval.'
-        }, selfApproved
-            ? 'Practice block approved and reserved immediately'
-            : 'Practice block request submitted for executive approval');
+            pendingWith: targetCaptain
+                ? {
+                    _id: targetCaptain._id,
+                    name: targetCaptain.name,
+                    email: targetCaptain.email,
+                    captainOf: targetCaptain.captainOf
+                }
+                : null,
+            message: responseMessage
+        }, responseMessage.replace(/\.$/, ''));
     } catch (error) {
         console.error('[Captain/CreateBlock] Error:', error);
         return errorResponse(res, 500, 'SERVER_ERROR', error.message);
@@ -178,6 +209,7 @@ export const getMyPracticeBlocks = async (req, res) => {
         const blocks = await TeamPracticeBlock.find({ captain: req.user._id })
             .populate('facility', 'name sportType location')
             .populate('reviewedBy', 'name')
+            .populate('targetCaptain', 'name email captainOf')
             .sort({ createdAt: -1 })
             .maxTimeMS(5000)
             .lean();
@@ -193,6 +225,12 @@ export const getMyPracticeBlocks = async (req, res) => {
                 daysOfWeek: b.daysOfWeek,
                 status: b.status,
                 reviewedBy: b.reviewedBy?.name || null,
+                pendingWith: b.targetCaptain ? {
+                    _id: b.targetCaptain._id,
+                    name: b.targetCaptain.name,
+                    email: b.targetCaptain.email,
+                    captainOf: b.targetCaptain.captainOf
+                } : null,
                 reviewedAt: b.reviewedAt,
                 rejectionReason: b.rejectionReason,
                 notes: b.notes,
@@ -206,7 +244,127 @@ export const getMyPracticeBlocks = async (req, res) => {
 };
 
 // ═════════════════════════════════════════════════════════════════════════════
-// 3. EDIT TEAM PRACTICE BLOCK
+// 3. GET INCOMING PRACTICE BLOCK REVIEWS
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/captain/practice-blocks/incoming
+ *
+ * Returns pending cross-sport blocks that require this captain's review.
+ */
+export const getIncomingPracticeBlockRequests = async (req, res) => {
+    try {
+        if (!req.user?._id) {
+            return errorResponse(res, 401, 'AUTH_REQUIRED', 'Authentication required');
+        }
+
+        const blocks = await TeamPracticeBlock.find({
+            status: 'pending',
+            targetCaptain: req.user._id
+        })
+            .populate('captain', 'name email captainOf profileDetails.rollNumber')
+            .populate('facility', 'name sportType location')
+            .sort({ createdAt: 1 })
+            .maxTimeMS(5000)
+            .lean();
+
+        return successResponse(res, 200, {
+            incomingBlocks: blocks.map((block) => ({
+                _id: block._id,
+                captain: {
+                    _id: block.captain?._id,
+                    name: block.captain?.name,
+                    email: block.captain?.email,
+                    captainOf: block.captain?.captainOf || null,
+                    rollNumber: block.captain?.profileDetails?.rollNumber || null
+                },
+                facility: block.facility,
+                sport: block.sport,
+                practiceDate: block.practiceDate,
+                startTime: block.startTime,
+                endTime: block.endTime,
+                daysOfWeek: block.daysOfWeek,
+                notes: block.notes,
+                createdAt: block.createdAt
+            }))
+        });
+    } catch (error) {
+        console.error('[Captain/GetIncomingBlocks] Error:', error);
+        return errorResponse(res, 500, 'SERVER_ERROR', error.message);
+    }
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 4. REVIEW INCOMING PRACTICE BLOCK
+// ═════════════════════════════════════════════════════════════════════════════
+
+/**
+ * PATCH /api/captain/practice-blocks/:blockId/review
+ *
+ * Approve or reject a cross-sport request sent to this captain.
+ */
+export const reviewIncomingPracticeBlock = async (req, res) => {
+    try {
+        if (!req.user?._id) {
+            return errorResponse(res, 401, 'AUTH_REQUIRED', 'Authentication required');
+        }
+
+        const { blockId } = req.params;
+        const { action, rejectionReason } = req.body;
+
+        if (!['approve', 'reject'].includes(action)) {
+            return errorResponse(res, 400, 'VALIDATION_ERROR', 'action must be "approve" or "reject"');
+        }
+
+        const block = await TeamPracticeBlock.findById(blockId)
+            .populate('facility', 'name sportType')
+            .populate('captain', 'name captainOf');
+
+        if (!block) {
+            return errorResponse(res, 404, 'BLOCK_NOT_FOUND', 'Practice block not found');
+        }
+
+        if (String(block.targetCaptain || '') !== String(req.user._id)) {
+            return errorResponse(res, 403, 'FORBIDDEN', 'This request is not assigned to you');
+        }
+
+        if (block.status !== 'pending') {
+            return errorResponse(res, 400, 'NOT_PENDING', `Block is already ${block.status}, cannot review`);
+        }
+
+        block.reviewedBy = req.user._id;
+        block.reviewedAt = new Date();
+        block.rejectionReason = null;
+
+        if (action === 'reject') {
+            block.status = 'rejected';
+            block.rejectionReason = rejectionReason?.trim() || null;
+            await block.save();
+
+            return successResponse(res, 200, {
+                _id: block._id,
+                status: block.status,
+                rejectionReason: block.rejectionReason
+            }, 'Practice block rejected');
+        }
+
+        block.status = 'approved';
+        await block.save();
+
+        return successResponse(res, 200, {
+            _id: block._id,
+            status: block.status,
+            facility: block.facility?.name,
+            captain: block.captain?.name
+        }, 'Practice block approved');
+    } catch (error) {
+        console.error('[Captain/ReviewIncomingBlock] Error:', error);
+        return errorResponse(res, 500, 'SERVER_ERROR', error.message);
+    }
+};
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 5. EDIT TEAM PRACTICE BLOCK
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
@@ -294,8 +452,17 @@ export const editTeamPracticeBlock = async (req, res) => {
         block.reviewedBy = null;
         block.reviewedAt = null;
         block.rejectionReason = null;
+        block.targetCaptain = selfApproved
+            ? null
+            : (await findTargetCaptain(req.user._id, facility?.sportType))?._id || null;
 
         await block.save();
+
+        const updateMessage = selfApproved
+            ? 'Practice block updated and remains reserved immediately.'
+            : block.targetCaptain
+                ? 'Practice block updated. Sent for the facility captain review.'
+                : 'Practice block updated. Sent for executive re-approval.';
 
         return successResponse(res, 200, {
             _id: block._id,
@@ -304,9 +471,7 @@ export const editTeamPracticeBlock = async (req, res) => {
             endTime: block.endTime,
             status: block.status,
             notes: block.notes
-        }, selfApproved
-            ? 'Practice block updated and remains reserved immediately.'
-            : 'Practice block updated. Sent for executive re-approval.');
+        }, updateMessage);
     } catch (error) {
         console.error('[Captain/EditBlock] Error:', error);
         return errorResponse(res, 500, 'SERVER_ERROR', error.message);

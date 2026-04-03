@@ -178,7 +178,13 @@ export const dismissCaptain = async (req, res) => {
  */
 export const getPendingPracticeBlocks = async (req, res) => {
     try {
-        const blocks = await TeamPracticeBlock.find({ status: 'pending' })
+        const blocks = await TeamPracticeBlock.find({
+            status: 'pending',
+            $or: [
+                { targetCaptain: null },
+                { targetCaptain: { $exists: false } }
+            ]
+        })
             .populate('captain', 'name email roles captainOf profileDetails.rollNumber')
             .populate('facility', 'name sportType location')
             .sort({ createdAt: 1 })

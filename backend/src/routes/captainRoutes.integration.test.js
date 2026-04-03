@@ -8,12 +8,16 @@ const {
   teamPracticeBlockFindOneMock,
   teamPracticeBlockCreateMock,
   teamPracticeBlockFindMock,
+  teamPracticeBlockFindByIdMock,
+  userFindOneMock,
 } = vi.hoisted(() => ({
   facilityFindByIdMock: vi.fn(),
   facilityFindOneMock: vi.fn(),
   teamPracticeBlockFindOneMock: vi.fn(),
   teamPracticeBlockCreateMock: vi.fn(),
   teamPracticeBlockFindMock: vi.fn(),
+  teamPracticeBlockFindByIdMock: vi.fn(),
+  userFindOneMock: vi.fn(),
 }));
 
 vi.mock('../middlewares/authMiddleware.js', async () => {
@@ -43,6 +47,13 @@ vi.mock('../models/TeamPracticeBlock.js', () => ({
     findOne: teamPracticeBlockFindOneMock,
     create: teamPracticeBlockCreateMock,
     find: teamPracticeBlockFindMock,
+    findById: teamPracticeBlockFindByIdMock,
+  },
+}));
+
+vi.mock('../models/User.js', () => ({
+  default: {
+    findOne: userFindOneMock,
   },
 }));
 
@@ -93,7 +104,7 @@ describe('captainRoutes integration', () => {
       .post('/api/captain/practice-blocks')
       .send({
         facilityId: 'facility-1',
-        practiceDate: '2026-03-30',
+        practiceDate: '2026-04-10',
         startTime: '18:30',
         endTime: '20:30',
       });
@@ -128,7 +139,7 @@ describe('captainRoutes integration', () => {
       .set(captainHeader)
       .send({
         facilityId: 'facility-1',
-        practiceDate: '2026-03-30',
+        practiceDate: '2026-04-10',
         startTime: '18:30',
         endTime: '20:30',
         notes: 'Self-approved court block',
@@ -138,15 +149,21 @@ describe('captainRoutes integration', () => {
     expect(response.body.data.status).toBe('approved');
   });
 
-  it('keeps cross-sport captain requests pending through the route stack', async () => {
+  it('routes cross-sport captain requests to the facility sport captain through the route stack', async () => {
     facilityFindByIdMock.mockReturnValueOnce(createChain({
       _id: 'facility-2',
-      name: 'Tennis Court 1',
-      sportType: 'Tennis',
+      name: 'Basketball Court 1',
+      sportType: 'Basketball',
       facilityType: 'sports',
       isOperational: true,
     }));
     teamPracticeBlockFindOneMock.mockReturnValueOnce(createChain(null));
+    userFindOneMock.mockReturnValueOnce(createChain({
+      _id: 'captain-2',
+      name: 'Basketball Captain',
+      email: 'basketballcap@iitk.ac.in',
+      captainOf: 'Basketball',
+    }));
     teamPracticeBlockCreateMock.mockResolvedValueOnce({
       _id: 'block-2',
       sport: 'Badminton',
@@ -155,6 +172,7 @@ describe('captainRoutes integration', () => {
       endTime: '20:30',
       daysOfWeek: [2],
       status: 'pending',
+      targetCaptain: 'captain-2',
     });
 
     const app = createApp();
@@ -164,7 +182,7 @@ describe('captainRoutes integration', () => {
       .set(captainHeader)
       .send({
         facilityId: 'facility-2',
-        practiceDate: '2026-03-31',
+        practiceDate: '2026-04-11',
         startTime: '18:30',
         endTime: '20:30',
         notes: 'Needs approval',
@@ -172,6 +190,10 @@ describe('captainRoutes integration', () => {
 
     expect(response.status).toBe(201);
     expect(response.body.data.status).toBe('pending');
+    expect(response.body.data.pendingWith).toEqual(expect.objectContaining({
+      _id: 'captain-2',
+      captainOf: 'Basketball',
+    }));
   });
 
   it('returns the captain block list through the route stack', async () => {
@@ -205,5 +227,74 @@ describe('captainRoutes integration', () => {
       sport: 'Badminton',
       status: 'approved',
     }));
+  });
+
+  it('lists incoming practice block approvals for the assigned target captain', async () => {
+    teamPracticeBlockFindMock.mockReturnValueOnce(createChain([
+      {
+        _id: 'block-incoming-1',
+        captain: {
+          _id: 'captain-1',
+          name: 'Badminton Captain',
+          email: 'captain@iitk.ac.in',
+          captainOf: 'Badminton',
+          profileDetails: { rollNumber: '230010' },
+        },
+        facility: { _id: 'facility-2', name: 'Basketball Court 1', sportType: 'Basketball', location: 'Sports Complex' },
+        sport: 'Badminton',
+        practiceDate: new Date('2026-03-31T00:00:00.000Z'),
+        startTime: '18:30',
+        endTime: '20:30',
+        daysOfWeek: [2],
+        notes: 'Inter-sport request',
+        createdAt: new Date('2026-03-27T00:00:00.000Z'),
+      },
+    ]));
+
+    const app = createApp();
+
+    const response = await request(app)
+      .get('/api/captain/practice-blocks/incoming')
+      .set('x-test-user', JSON.stringify({
+        _id: 'captain-2',
+        roles: ['captain'],
+        captainOf: 'Basketball',
+        name: 'Basketball Captain',
+      }));
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.incomingBlocks).toHaveLength(1);
+    expect(response.body.data.incomingBlocks[0]).toEqual(expect.objectContaining({
+      sport: 'Badminton',
+      facility: expect.objectContaining({ sportType: 'Basketball' }),
+    }));
+  });
+
+  it('lets the target captain approve an incoming cross-sport request', async () => {
+    const saveMock = vi.fn();
+    teamPracticeBlockFindByIdMock.mockReturnValueOnce(createChain({
+      _id: 'block-incoming-1',
+      targetCaptain: 'captain-2',
+      status: 'pending',
+      facility: { name: 'Basketball Court 1', sportType: 'Basketball' },
+      captain: { name: 'Badminton Captain', captainOf: 'Badminton' },
+      save: saveMock,
+    }));
+
+    const app = createApp();
+
+    const response = await request(app)
+      .patch('/api/captain/practice-blocks/block-incoming-1/review')
+      .set('x-test-user', JSON.stringify({
+        _id: 'captain-2',
+        roles: ['captain'],
+        captainOf: 'Basketball',
+        name: 'Basketball Captain',
+      }))
+      .send({ action: 'approve' });
+
+    expect(response.status).toBe(200);
+    expect(saveMock).toHaveBeenCalled();
+    expect(response.body.data.status).toBe('approved');
   });
 });

@@ -140,8 +140,11 @@ const TimeCombobox = ({ value, onChange }) => {
 const CaptainDashboardPage = () => {
   const { user } = useAuth();
   const [blocks, setBlocks] = useState([]);
+  const [incomingBlocks, setIncomingBlocks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [incomingError, setIncomingError] = useState('');
+  const [reviewingBlockId, setReviewingBlockId] = useState('');
   
   // Add Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -165,6 +168,17 @@ const CaptainDashboardPage = () => {
       setError(err.response?.data?.message || 'Failed to load practice blocks');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchIncomingBlocks = async () => {
+    try {
+      const { data } = await api.get('/captain/practice-blocks/incoming');
+      setIncomingBlocks(data.data?.incomingBlocks || []);
+      setIncomingError('');
+    } catch (err) {
+      console.error(err);
+      setIncomingError(err.response?.data?.message || 'Failed to load incoming approval requests');
     }
   };
 
@@ -209,8 +223,7 @@ const CaptainDashboardPage = () => {
   };
 
   useEffect(() => {
-    fetchBlocks();
-    fetchFacilities();
+    Promise.all([fetchBlocks(), fetchIncomingBlocks(), fetchFacilities()]);
   }, [user.captainOf]);
 
   const handleCancelBlock = async (blockId) => {
@@ -230,7 +243,7 @@ const CaptainDashboardPage = () => {
       await api.post('/captain/practice-blocks', formData);
       setIsModalOpen(false);
       setFormData({ facilityId: '', practiceDate: getTodayValue(), startTime: '', endTime: '', notes: '' });
-      fetchBlocks();
+      await Promise.all([fetchBlocks(), fetchIncomingBlocks()]);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to add block');
     } finally {
@@ -250,11 +263,30 @@ const CaptainDashboardPage = () => {
       });
       setIsEditModalOpen(false);
       setEditData({ id: '', practiceDate: getTodayValue(), startTime: '', endTime: '', notes: '' });
-      fetchBlocks();
+      await Promise.all([fetchBlocks(), fetchIncomingBlocks()]);
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to update block timings');
     } finally {
       setEditLoading(false);
+    }
+  };
+
+  const handleIncomingReview = async (blockId, action) => {
+    const rejectionReason = action === 'reject'
+      ? window.prompt('Optional rejection reason for this request:', 'Rejected by facility captain')
+      : null;
+
+    setReviewingBlockId(blockId);
+    try {
+      await api.patch(`/captain/practice-blocks/${blockId}/review`, {
+        action,
+        rejectionReason: rejectionReason || undefined,
+      });
+      await Promise.all([fetchBlocks(), fetchIncomingBlocks()]);
+    } catch (err) {
+      alert(err.response?.data?.message || `Failed to ${action} request`);
+    } finally {
+      setReviewingBlockId('');
     }
   };
 
@@ -297,6 +329,11 @@ const CaptainDashboardPage = () => {
                       {formatDate(block.practiceDate)} • {formatTime(block.startTime)} to {formatTime(block.endTime)}
                     </p>
                     {block.notes && <p className="text-xs text-gray-400 mt-2 italic">"{block.notes}"</p>}
+                    {block.status?.toLowerCase() === 'pending' && block.pendingWith?.captainOf && (
+                      <p className="text-xs text-amber-600 mt-2 font-medium">
+                        Awaiting approval from the {block.pendingWith.captainOf} captain.
+                      </p>
+                    )}
                     {block.rejectionReason && (
                       <p className="text-xs text-red-500 mt-1 font-medium select-none">Reason: {block.rejectionReason}</p>
                     )}
@@ -360,6 +397,67 @@ const CaptainDashboardPage = () => {
             As captain, you can request and manage future team practice slots that block the facility for other users once approved.
           </p>
         </div>
+
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <div>
+              <h3 className="text-base font-bold text-gray-800">Incoming Approval Requests</h3>
+              <p className="text-xs text-gray-500 mt-1">Cross-sport requests for your facility need your review.</p>
+            </div>
+            <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-brand-50 text-brand-600">
+              {incomingBlocks.length}
+            </span>
+          </div>
+
+          {incomingError ? (
+            <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm">{incomingError}</div>
+          ) : incomingBlocks.length > 0 ? (
+            <div className="space-y-4">
+              {incomingBlocks.map((block) => (
+                <div key={block._id} className="border border-gray-100 rounded-xl p-4 bg-gray-50">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-bold text-gray-800">{block.facility?.name || 'Facility'}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Requested by {block.captain?.name || 'Captain'}{block.captain?.captainOf ? ` • ${block.captain.captainOf} Captain` : ''}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {formatDate(block.practiceDate)} • {formatTime(block.startTime)} to {formatTime(block.endTime)}
+                      </p>
+                      {block.notes ? (
+                        <p className="text-xs text-gray-400 mt-2 italic">"{block.notes}"</p>
+                      ) : null}
+                    </div>
+                    <StatusBadge status="pending" />
+                  </div>
+                  <div className="flex items-center gap-2 mt-4">
+                    <button
+                      type="button"
+                      disabled={reviewingBlockId === block._id}
+                      onClick={() => handleIncomingReview(block._id, 'approve')}
+                      className="flex-1 rounded-xl bg-emerald-500 text-white text-sm font-semibold py-2.5 hover:bg-emerald-600 transition-colors disabled:opacity-50"
+                    >
+                      {reviewingBlockId === block._id ? 'Working...' : 'Approve'}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={reviewingBlockId === block._id}
+                      onClick={() => handleIncomingReview(block._id, 'reject')}
+                      className="flex-1 rounded-xl bg-red-500 text-white text-sm font-semibold py-2.5 hover:bg-red-600 transition-colors disabled:opacity-50"
+                    >
+                      {reviewingBlockId === block._id ? 'Working...' : 'Reject'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+              <p className="text-sm text-gray-500 font-medium">No incoming cross-sport requests</p>
+              <p className="text-xs text-gray-400 mt-1">Requests for your facilities will appear here for approval.</p>
+            </div>
+          )}
+        </div>
         
         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
            <div className="flex items-center gap-2 text-blue-700 font-bold text-sm mb-2">
@@ -367,7 +465,8 @@ const CaptainDashboardPage = () => {
            </div>
            <ul className="text-xs text-blue-600 space-y-2 list-disc pl-4">
              <li>Practice blocks can be requested for any future date.</li>
-             <li>All requests must be approved by an executive.</li>
+             <li>Requests on your own sport facilities are approved immediately.</li>
+             <li>Cross-sport requests are routed to the destination sport captain when one exists.</li>
              <li>Once approved, that facility slot becomes unavailable for regular users.</li>
            </ul>
         </div>

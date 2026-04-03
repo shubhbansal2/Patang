@@ -44,6 +44,11 @@ const teamPracticeBlockSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User'
         },
+        targetCaptain: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            default: null
+        },
         reviewedAt: {
             type: Date
         },
@@ -62,6 +67,7 @@ const teamPracticeBlockSchema = new mongoose.Schema(
 teamPracticeBlockSchema.index({ facility: 1, status: 1, daysOfWeek: 1 });
 teamPracticeBlockSchema.index({ facility: 1, status: 1, practiceDate: 1 });
 teamPracticeBlockSchema.index({ captain: 1, status: 1 });
+teamPracticeBlockSchema.index({ targetCaptain: 1, status: 1 });
 
 const TeamPracticeBlock = mongoose.model('TeamPracticeBlock', teamPracticeBlockSchema);
 
