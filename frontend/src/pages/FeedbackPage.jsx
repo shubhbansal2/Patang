@@ -252,24 +252,24 @@ const FeedbackPage = () => {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-gray-800 truncate">{fb.subject}</p>
-                        <div className="flex items-center gap-3 mt-0.5">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                           <span className="text-[10px] text-gray-400">
                             To: {recipients.find(r => r.value === fb.targetRole)?.label || fb.targetRole}
                           </span>
-                          <span className="text-[10px] text-gray-400">•</span>
+                          <span className="text-[10px] text-gray-400 hidden sm:inline">•</span>
                           <span className="text-[10px] text-gray-400">{fmtDate(fb.createdAt)}</span>
                           {fb.isAnonymous && (
                             <>
-                              <span className="text-[10px] text-gray-400">•</span>
+                              <span className="text-[10px] text-gray-400 hidden sm:inline">•</span>
                               <span className="text-[10px] text-gray-400 flex items-center gap-0.5"><EyeOff size={9} /> Anonymous</span>
                             </>
                           )}
                         </div>
                       </div>
-                      <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border ${stCfg.color}`}>
+                      <span className={`shrink-0 inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border ${stCfg.color}`}>
                         <StIcon size={10} /> {stCfg.label}
                       </span>
-                      <ChevronDown size={16} className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                      <ChevronDown size={16} className={`shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                     </button>
 
                     {/* Expanded detail */}
