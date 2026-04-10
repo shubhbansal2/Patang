@@ -20,6 +20,9 @@ export const registerUser = async (req, res) => {
             if (!rollNumber) {
                 return res.status(400).json({ message: "Roll number is required for students" });
             }
+            if (!/^\d+$/.test(rollNumber)) {
+                return res.status(400).json({ message: "Roll number must contain only numerical digits" });
+            }
         } else if (userType === 'faculty') {
             finalRollNumber = ''; // Faculty don't need roll numbers
         }

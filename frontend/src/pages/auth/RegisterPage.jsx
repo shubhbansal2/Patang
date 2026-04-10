@@ -46,6 +46,11 @@ const RegisterPage = () => {
       return;
     }
 
+    if (userType === 'student' && !/^\d+$/.test(rn)) {
+      setError('Roll number must contain only numerical digits');
+      return;
+    }
+
     if (!p) {
       setError('Password is required');
       return;
@@ -180,7 +185,7 @@ const RegisterPage = () => {
                   <label htmlFor="register-roll" className="block text-sm font-medium text-gray-600 mb-1.5">Roll Number <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input id="register-roll" name="rollNumber" type="text" value={rollNumber} onChange={(e) => setRollNumber(e.target.value)}
+                    <input id="register-roll" name="rollNumber" type="text" inputMode="numeric" pattern="[0-9]*" value={rollNumber} onChange={(e) => { const val = e.target.value; if (val === '' || /^\d+$/.test(val)) setRollNumber(val); }}
                       placeholder="Roll No. (e.g. 210123)" required
                       className="w-full pl-10 pr-4 py-3 bg-white rounded-lg border border-gray-300 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500/40 focus:border-brand-500 transition-all" />
                   </div>
