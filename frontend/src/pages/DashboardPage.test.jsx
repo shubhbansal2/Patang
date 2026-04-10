@@ -112,7 +112,6 @@ describe('DashboardPage', () => {
 
   it('shows a confirmation after cancelling a booking', async () => {
     const user = userEvent.setup();
-    const promptMock = vi.spyOn(window, 'prompt').mockReturnValue('Schedule conflict');
 
     getMock
       .mockResolvedValueOnce({
@@ -152,10 +151,14 @@ describe('DashboardPage', () => {
 
     await user.click(await screen.findByRole('button', { name: /cancel booking for badminton court 1/i }));
 
+    const reasonInput = await screen.findByLabelText(/cancellation reason/i);
+    await user.clear(reasonInput);
+    await user.type(reasonInput, 'Schedule conflict');
+
+    await user.click(screen.getByRole('button', { name: 'Cancel Booking' }));
+
     expect(postMock).toHaveBeenCalledWith('/bookings/booking-1/cancel', { reason: 'Schedule conflict' });
     expect(await screen.findByText(/was cancelled successfully/i)).toBeInTheDocument();
-
-    promptMock.mockRestore();
   });
 
   it('updates the player count through the modify booking action', async () => {

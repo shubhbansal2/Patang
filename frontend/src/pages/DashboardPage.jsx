@@ -12,6 +12,7 @@ import {
   CalendarDays,
   LoaderCircle
 } from 'lucide-react';
+import ConfirmModal from '../components/ui/ConfirmModal';
 
 /* ──────────────────────────────────────────────────────────────────────
    Helpers
@@ -83,6 +84,13 @@ const DashboardPage = () => {
   const [bookingFeedback, setBookingFeedback] = useState({ tone: '', message: '' });
   const [qrPreviewOpen, setQrPreviewOpen] = useState(false);
 
+  // Cancellation Modal State
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [bookingToCancel, setBookingToCancel] = useState(null);
+  const [cancelReason, setCancelReason] = useState('Schedule conflict');
+  const [cancelError, setCancelError] = useState('');
+  const [cancelLoading, setCancelLoading] = useState(false);
+
   const fetchDashboard = async ({ preserveLoading = false } = {}) => {
     if (!preserveLoading) {
       setLoading(true);
@@ -131,34 +139,44 @@ const DashboardPage = () => {
   const { subscriptions = [], upcomingBookings = [], fairUse = {}, penalties = {}, upcomingEvents = [] } = dashboard || {};
   const approvedSubscription = subscriptions.find((subscription) => subscription.status === 'Approved') || null;
 
-  const handleCancelBooking = async (booking) => {
-    const reason = window.prompt('Enter a cancellation reason for this booking:', 'Schedule conflict');
-    if (reason == null) return;
+  const handleCancelBooking = (booking) => {
+    setBookingToCancel(booking);
+    setCancelReason('Schedule conflict');
+    setCancelError('');
+    setShowCancelModal(true);
+  };
 
-    const trimmedReason = reason.trim();
-    if (!trimmedReason) return;
+  const confirmCancelBooking = async () => {
+    const trimmedReason = cancelReason.trim();
+    if (!trimmedReason) {
+      setCancelError('Please provide a reason for cancellation.');
+      return;
+    }
 
-    setBookingCancellationId(booking._id);
+    setCancelLoading(true);
+    setCancelError('');
     setBookingFeedback({ tone: '', message: '' });
 
     try {
-      if (booking.source === 'v2') {
-        await api.post(`/bookings/${booking._id}/cancel`, { reason: trimmedReason });
+      if (bookingToCancel.source === 'v2') {
+        await api.post(`/bookings/${bookingToCancel._id}/cancel`, { reason: trimmedReason });
       } else {
-        await api.delete(`/v2/bookings/${booking._id}`, {
+        await api.delete(`/v2/bookings/${bookingToCancel._id}`, {
           data: { reason: trimmedReason },
         });
       }
 
       await fetchDashboard({ preserveLoading: true });
+      setShowCancelModal(false);
+      setBookingToCancel(null);
       setBookingFeedback({
         tone: 'success',
-        message: `${booking.facilityName || 'Your facility booking'} was cancelled successfully.`,
+        message: `${bookingToCancel.facilityName || 'Your facility booking'} was cancelled successfully.`,
       });
     } catch (err) {
-      window.alert(err.response?.data?.error?.message || err.response?.data?.message || 'Could not cancel the booking.');
+      setCancelError(err.response?.data?.error?.message || err.response?.data?.message || 'Could not cancel the booking.');
     } finally {
-      setBookingCancellationId('');
+      setCancelLoading(false);
     }
   };
 
@@ -508,6 +526,26 @@ const DashboardPage = () => {
         </div>
       </div>
     ) : null}
+
+    <ConfirmModal
+      isOpen={showCancelModal}
+      onClose={() => { if (!cancelLoading) { setShowCancelModal(false); setBookingToCancel(null); } }}
+      onConfirm={confirmCancelBooking}
+      title="Cancel Booking"
+      description={`Are you sure you want to cancel your booking for ${bookingToCancel?.facilityName || 'this facility'}? This action cannot be undone.`}
+      variant="danger"
+      confirmLabel="Cancel Booking"
+      cancelLabel="Keep Booking"
+      textAreaProps={{
+        label: 'Cancellation Reason',
+        value: cancelReason,
+        onChange: (e) => setCancelReason(e.target.value),
+        placeholder: 'E.g., Schedule conflict',
+        required: true
+      }}
+      loading={cancelLoading}
+      error={cancelError}
+    />
     </>
   );
 };
