@@ -293,9 +293,14 @@ export const createBooking = async (req, res) => {
         }
 
         const activeBookings = existingBookings.reduce((sum, booking) => sum + getBookingParticipantCount(booking), 0);
+        const remainingCapacity = Math.max(slot.capacity - activeBookings, 0);
 
-        if (activeBookings + participantCount > slot.capacity) {
-            return res.status(400).json({ message: 'Selected slot is already full' });
+        if (participantCount > remainingCapacity) {
+            if (remainingCapacity === 0) {
+                return res.status(400).json({ message: 'Selected slot is already full' });
+            } else {
+                return res.status(400).json({ message: `Not enough capacity left. Only ${remainingCapacity} ${remainingCapacity === 1 ? 'place is' : 'places are'} available` });
+            }
         }
 
         if (existingBooking) {
