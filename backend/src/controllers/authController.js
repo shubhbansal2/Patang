@@ -279,6 +279,11 @@ export const resetPassword = async (req, res) => {
             return res.status(400).json({ message: "Invalid or expired reset code" });
         }
 
+        const isSamePassword = await user.matchPassword(newPassword);
+        if (isSamePassword) {
+            return res.status(400).json({ message: "New password must be different from your current password" });
+        }
+
         if (newPassword.length < 8) {
             return res.status(400).json({ message: "New password must contain at least 8 characters" });
         }
