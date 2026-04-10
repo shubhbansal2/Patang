@@ -93,7 +93,11 @@ const FeedbackPage = () => {
       setTargetRole(''); setCategory('suggestion'); setSubject(''); setMessage(''); setIsAnonymous(false);
       setTimeout(() => { setShowForm(false); setSubmitMsg({ type: '', text: '' }); fetchData(); }, 1500);
     } catch (err) {
-      setSubmitMsg({ type: 'error', text: err.response?.data?.message || 'Failed to submit feedback.' });
+      if (err.response?.status === 400 && err.response?.data?.message?.includes('inappropriate')) {
+        setSubmitMsg({ type: 'error', text: 'Please remove offensive or abusive language and try again.' });
+      } else {
+        setSubmitMsg({ type: 'error', text: err.response?.data?.message || 'Failed to submit feedback.' });
+      }
     } finally {
       setSubmitting(false);
     }
