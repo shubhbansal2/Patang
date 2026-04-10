@@ -151,43 +151,58 @@ export const getSportsHistory = async (req, res) => {
 
         // ── Merge and normalize records ──────────────────────────────
         const records = [
-            ...sportsBookings.map(b => ({
-                _id: b._id,
-                date: b.slotStartAt,
-                activityDetails: {
-                    facilityName: b.facility?.name || 'Unknown',
-                    sportType: b.facility?.sportType || null,
-                    location: b.facility?.location || null
-                },
-                slotTime: {
-                    start: b.slotStartAt,
-                    end: b.slotEndAt,
-                    type: 'Slot Booking'
-                },
-                status: b.status,
-                attendanceStatus: b.attendanceStatus,
-                isGroupBooking: b.isGroupBooking,
-                source: 'v2',
-                cancelledAt: (b.status === 'cancelled' || b.status === 'latecancelled') ? b.updatedAt : null
-            })),
-            ...v1Bookings.map(b => ({
-                _id: b._id,
-                date: b.slotDate,
-                activityDetails: {
-                    facilityName: b.facilityId?.name || 'Unknown',
-                    sportType: b.facilityId?.sportType || null,
-                    location: b.facilityId?.location || null
-                },
-                slotTime: {
-                    start: b.slotId?.startTime || b.slotDate,
-                    end: b.slotId?.endTime || null,
-                    type: 'Slot Booking'
-                },
-                status: b.status,
-                isGroupBooking: b.isGroupBooking,
-                source: 'v1',
-                cancelledAt: b.cancelledAt
-            }))
+            ...sportsBookings.map(b => {
+                let currentStatus = b.status;
+                if (['confirmed', 'group_pending'].includes(currentStatus) && b.slotEndAt && new Date(b.slotEndAt) < now) {
+                    currentStatus = 'Expired';
+                } else if (['confirmed', 'group_pending'].includes(currentStatus) && (!b.slotEndAt && new Date(b.slotStartAt) < now)) {
+                    currentStatus = 'Expired';
+                }
+                return {
+                    _id: b._id,
+                    date: b.slotStartAt,
+                    activityDetails: {
+                        facilityName: b.facility?.name || 'Unknown',
+                        sportType: b.facility?.sportType || null,
+                        location: b.facility?.location || null
+                    },
+                    slotTime: {
+                        start: b.slotStartAt,
+                        end: b.slotEndAt,
+                        type: 'Slot Booking'
+                    },
+                    status: currentStatus,
+                    attendanceStatus: b.attendanceStatus,
+                    isGroupBooking: b.isGroupBooking,
+                    source: 'v2',
+                    cancelledAt: (b.status === 'cancelled' || b.status === 'latecancelled') ? b.updatedAt : null
+                };
+            }),
+            ...v1Bookings.map(b => {
+                let currentStatus = b.status;
+                const slotStartTime = b.slotId?.startTime ? new Date(b.slotId.startTime) : b.slotDate;
+                if (['Confirmed', 'Provisioned'].includes(currentStatus) && slotStartTime < now) {
+                    currentStatus = 'Expired';
+                }
+                return {
+                    _id: b._id,
+                    date: b.slotDate,
+                    activityDetails: {
+                        facilityName: b.facilityId?.name || 'Unknown',
+                        sportType: b.facilityId?.sportType || null,
+                        location: b.facilityId?.location || null
+                    },
+                    slotTime: {
+                        start: b.slotId?.startTime || b.slotDate,
+                        end: b.slotId?.endTime || null,
+                        type: 'Slot Booking'
+                    },
+                    status: currentStatus,
+                    isGroupBooking: b.isGroupBooking,
+                    source: 'v1',
+                    cancelledAt: b.cancelledAt
+                };
+            })
         ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
         // ── Fair-use score derivation ────────────────────────────────

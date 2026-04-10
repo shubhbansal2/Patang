@@ -293,6 +293,11 @@ export const cancelBooking = async (req, res) => {
 
         // Calculate time until slot start
         const slotStartTime = booking.slotId?.startTime;
+        const now = new Date();
+        if (slotStartTime && slotStartTime <= now) {
+            return errorResponse(res, 400, 'CANNOT_CANCEL', 'Cannot cancel a booking after its scheduled time has passed');
+        }
+
         const hrsUntilSlot = slotStartTime ? hoursUntil(slotStartTime) : Infinity;
 
         let penaltyApplied = false;

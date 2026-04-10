@@ -367,7 +367,7 @@ const DashboardPage = () => {
                   </div>
                   <div className="flex items-center gap-3 flex-wrap">
                     <StatusBadge status={booking.status} />
-                    {booking.source === 'v2' ? (
+                    {booking.source === 'v2' && !['Expired', 'Completed', 'NoShow', 'expired', 'completed', 'no_show'].includes(booking.status) ? (
                       <button
                         type="button"
                         onClick={() => handleModifyBooking(booking)}
@@ -378,15 +378,17 @@ const DashboardPage = () => {
                         Modify
                       </button>
                     ) : null}
-                    <button
-                      type="button"
-                      onClick={() => handleCancelBooking(booking)}
-                      disabled={bookingCancellationId === booking._id || bookingUpdateId === booking._id}
-                      className="w-7 h-7 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center transition-colors"
-                      aria-label={`Cancel booking for ${booking.facilityName || 'facility'}`}
-                    >
-                      {bookingCancellationId === booking._id ? <LoaderCircle size={14} className="animate-spin" /> : <X size={14} />}
-                    </button>
+                    {!['Expired', 'Completed', 'NoShow', 'expired', 'completed', 'no_show'].includes(booking.status) ? (
+                      <button
+                        type="button"
+                        onClick={() => handleCancelBooking(booking)}
+                        disabled={bookingCancellationId === booking._id || bookingUpdateId === booking._id}
+                        className="w-7 h-7 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center transition-colors"
+                        aria-label={`Cancel booking for ${booking.facilityName || 'facility'}`}
+                      >
+                        {bookingCancellationId === booking._id ? <LoaderCircle size={14} className="animate-spin" /> : <X size={14} />}
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               ))}
