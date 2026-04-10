@@ -167,7 +167,8 @@ export const getSportsHistory = async (req, res) => {
                 status: b.status,
                 attendanceStatus: b.attendanceStatus,
                 isGroupBooking: b.isGroupBooking,
-                source: 'v2'
+                source: 'v2',
+                cancelledAt: (b.status === 'cancelled' || b.status === 'latecancelled') ? b.updatedAt : null
             })),
             ...v1Bookings.map(b => ({
                 _id: b._id,
@@ -184,7 +185,8 @@ export const getSportsHistory = async (req, res) => {
                 },
                 status: b.status,
                 isGroupBooking: b.isGroupBooking,
-                source: 'v1'
+                source: 'v1',
+                cancelledAt: b.cancelledAt
             }))
         ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
