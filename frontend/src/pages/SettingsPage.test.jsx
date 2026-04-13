@@ -36,7 +36,7 @@ describe('SettingsPage', () => {
           profile: {
             email: 'student@iitk.ac.in',
             name: 'Patang Student',
-            profileDetails: { rollNumber: '230001', program: 'BTech', department: 'CSE' },
+            profileDetails: { rollNumber: '230001', program: 'BTech', department: 'Computer Science & Engineering' },
           },
           account: {},
           subscriptions: [],
@@ -50,9 +50,8 @@ describe('SettingsPage', () => {
       </MemoryRouter>
     );
 
-    const departmentSelect = await screen.findByRole('combobox');
-    expect(departmentSelect).toHaveValue('CSE');
-    expect(screen.getByRole('option', { name: /computer science and engineering \(cse\)/i })).toBeInTheDocument();
+    const combobox = await screen.findByRole('combobox');
+    expect(combobox).toHaveTextContent('Computer Science & Engineering');
   });
 
   it('logs the user out shortly after a successful password change', async () => {
@@ -62,7 +61,7 @@ describe('SettingsPage', () => {
           profile: {
             email: 'student@iitk.ac.in',
             name: 'Patang Student',
-            profileDetails: { rollNumber: '230001', program: 'BTech', department: 'CSE' },
+            profileDetails: { rollNumber: '230001', program: 'BTech', department: 'Computer Science & Engineering' },
           },
           account: {},
           subscriptions: [],

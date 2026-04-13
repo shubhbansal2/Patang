@@ -20,6 +20,9 @@ export const registerUser = async (req, res) => {
             if (!rollNumber) {
                 return res.status(400).json({ message: "Roll number is required for students" });
             }
+            if (!/^\d+$/.test(rollNumber)) {
+                return res.status(400).json({ message: "Roll number must contain only numerical digits" });
+            }
         } else if (userType === 'faculty') {
             finalRollNumber = ''; // Faculty don't need roll numbers
         }
@@ -277,6 +280,11 @@ export const resetPassword = async (req, res) => {
 
         if (!user) {
             return res.status(400).json({ message: "Invalid or expired reset code" });
+        }
+
+        const isSamePassword = await user.matchPassword(newPassword);
+        if (isSamePassword) {
+            return res.status(400).json({ message: "New password must be different from your current password" });
         }
 
         if (newPassword.length < 8) {

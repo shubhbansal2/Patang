@@ -9,6 +9,7 @@ import { AlertCircle, Check } from 'lucide-react';
  *  - variant: 'success' | 'danger' (controls colors)
  *  - confirmLabel, cancelLabel
  *  - textAreaProps: { value, onChange, placeholder, required }   (optional)
+ *  - inputProps: { type, value, onChange, placeholder, min, max, required } (optional)
  *  - loading, error
  */
 const ConfirmModal = ({
@@ -21,6 +22,7 @@ const ConfirmModal = ({
     confirmLabel = 'Confirm',
     cancelLabel = 'Cancel',
     textAreaProps,
+    inputProps,
     loading = false,
     error = '',
 }) => {
@@ -60,6 +62,24 @@ const ConfirmModal = ({
                                 onChange={textAreaProps.onChange}
                                 placeholder={textAreaProps.placeholder || ''}
                                 className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all resize-none"
+                            />
+                        </div>
+                    )}
+
+                    {inputProps && (
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-800 mb-2">
+                                {inputProps.label || 'Value'}
+                                {inputProps.required && <span className="text-red-500 ml-1">*</span>}
+                            </label>
+                            <input
+                                type={inputProps.type || 'text'}
+                                value={inputProps.value}
+                                onChange={inputProps.onChange}
+                                placeholder={inputProps.placeholder || ''}
+                                min={inputProps.min}
+                                max={inputProps.max}
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-all"
                             />
                         </div>
                     )}

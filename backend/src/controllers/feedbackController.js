@@ -2,6 +2,7 @@ import Feedback from '../models/Feedback.js';
 import User from '../models/User.js';
 import { successResponse, errorResponse } from '../utils/apiResponse.js';
 import { createNotification } from '../services/notificationService.js';
+import { isToxic } from '../utils/moderation.js';
 
 // ── Recipient options for the dropdown ────────────────────────────────────────
 
@@ -122,6 +123,14 @@ export const submitFeedback = async (req, res) => {
         }
         if (message.trim().length > 2000) {
             return errorResponse(res, 400, 'VALIDATION_ERROR', 'Message cannot exceed 2000 characters');
+        }
+
+        // Perspective API Moderation
+        const combinedText = `${subject.trim()}\n${message.trim()}`;
+        const isContentToxic = await isToxic(combinedText);
+        
+        if (isContentToxic) {
+            return errorResponse(res, 400, 'INAPPROPRIATE_CONTENT', 'Your feedback contains inappropriate language. Please revise and resubmit.');
         }
 
         const feedback = await Feedback.create({

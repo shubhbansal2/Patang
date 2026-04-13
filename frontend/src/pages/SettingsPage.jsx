@@ -7,6 +7,7 @@ import {
   AlertTriangle, Dumbbell, Waves, Calendar, BadgeCheck, Info,
   Hash, GraduationCap, Building2, Briefcase
 } from 'lucide-react';
+import SearchableCombobox from '../components/ui/SearchableCombobox';
 
 /* ═══════════════════════════════════════════════════════════════════════
    HELPERS
@@ -90,8 +91,8 @@ const SettingsPage = () => {
     e.preventDefault();
     setProfileMsg({ type: '', text: '' });
     if (!name.trim()) { setProfileMsg({ type: 'error', text: 'Name cannot be empty.' }); return; }
-    if (requiresCanonicalDepartment && !department.trim()) {
-      setProfileMsg({ type: 'error', text: 'Please select a valid IITK department.' });
+    if (!department) {
+      setProfileMsg({ type: 'error', text: 'Please select a valid department.' });
       return;
     }
 
@@ -100,7 +101,7 @@ const SettingsPage = () => {
       await api.patch('/settings/profile', {
         name: name.trim(),
         program: program.trim(),
-        department: department.trim().toUpperCase(),
+        department: department,
         designation: designation.trim()
       });
       setProfileMsg({ type: 'success', text: 'Profile updated successfully!' });
@@ -196,28 +197,13 @@ const SettingsPage = () => {
                 {authUser?.roles?.includes('faculty') && (
                   <Field label="Designation" icon={Briefcase} value={designation} onChange={e => setDesignation(e.target.value)} placeholder="e.g. Professor, Assistant Professor" />
                 )}
-                {requiresCanonicalDepartment ? (
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Department</label>
-                    <div className="relative">
-                      <Building2 size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                      <select
-                        value={department || ''}
-                        onChange={(e) => setDepartment(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all text-gray-800"
-                      >
-                        <option value="">Select IITK department</option>
-                        {IITK_DEPARTMENT_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                ) : (
-                  <Field label="Department" icon={Building2} value={department} onChange={e => setDepartment(e.target.value)} placeholder="Department" />
-                )}
+                <SearchableCombobox
+                  label="Department"
+                  options={IITK_DEPARTMENT_OPTIONS}
+                  value={department}
+                  onChange={setDepartment}
+                  placeholder="Select Department"
+                />
               </div>
               <div className="flex justify-end pt-2">
                 <button type="submit" disabled={savingProfile}

@@ -120,33 +120,48 @@ export const getDashboard = async (req, res) => {
 
         // ── Normalize upcoming bookings into a unified shape ─────────────
         const upcomingBookings = [
-            ...sportsBookings.map(b => ({
-                _id: b._id,
-                facilityName: b.facility?.name ?? null,
-                facilityLocation: b.facility?.location ?? null,
-                sportType: b.facility?.sportType ?? null,
-                slotStart: b.slotStartAt,
-                slotEnd: b.slotEndAt,
-                status: b.status,
-                isGroupBooking: b.isGroupBooking,
-                participantCount: typeof b.participantCount === 'number'
-                    ? b.participantCount
-                    : Math.max(1, b.participants?.length || 1),
-                capacity: b.slot?.capacity ?? b.facility?.capacity ?? null,
-                minPlayersRequired: b.slot?.minPlayersRequired ?? 1,
-                source: 'v2'
-            })),
-            ...v1Bookings.map(b => ({
-                _id: b._id,
-                facilityName: b.facilityId?.name ?? null,
-                facilityLocation: b.facilityId?.location ?? null,
-                sportType: b.facilityId?.sportType ?? null,
-                slotStart: b.slotDate,
-                slotEnd: null, // v1 bookings don't store end time directly
-                status: b.status,
-                isGroupBooking: b.isGroupBooking,
-                source: 'v1'
-            }))
+            ...sportsBookings.map(b => {
+                let currentStatus = b.status;
+                if (['confirmed', 'group_pending'].includes(currentStatus) && b.slotEndAt && new Date(b.slotEndAt) < now) {
+                    currentStatus = 'Expired';
+                } else if (['confirmed', 'group_pending'].includes(currentStatus) && (!b.slotEndAt && new Date(b.slotStartAt) < now)) {
+                    currentStatus = 'Expired';
+                }
+                return {
+                    _id: b._id,
+                    facilityName: b.facility?.name ?? null,
+                    facilityLocation: b.facility?.location ?? null,
+                    sportType: b.facility?.sportType ?? null,
+                    slotStart: b.slotStartAt,
+                    slotEnd: b.slotEndAt,
+                    status: currentStatus,
+                    isGroupBooking: b.isGroupBooking,
+                    participantCount: typeof b.participantCount === 'number'
+                        ? b.participantCount
+                        : Math.max(1, b.participants?.length || 1),
+                    capacity: b.slot?.capacity ?? b.facility?.capacity ?? null,
+                    minPlayersRequired: b.slot?.minPlayersRequired ?? 1,
+                    source: 'v2'
+                };
+            }),
+            ...v1Bookings.map(b => {
+                let currentStatus = b.status;
+                const slotStartTime = b.slotId?.startTime ? new Date(b.slotId.startTime) : b.slotDate;
+                if (['Confirmed', 'Provisioned'].includes(currentStatus) && slotStartTime < now) {
+                    currentStatus = 'Expired';
+                }
+                return {
+                    _id: b._id,
+                    facilityName: b.facilityId?.name ?? null,
+                    facilityLocation: b.facilityId?.location ?? null,
+                    sportType: b.facilityId?.sportType ?? null,
+                    slotStart: b.slotDate,
+                    slotEnd: null, // v1 bookings don't store end time directly
+                    status: currentStatus,
+                    isGroupBooking: b.isGroupBooking,
+                    source: 'v1'
+                };
+            })
         ].sort((a, b) => new Date(a.slotStart) - new Date(b.slotStart));
 
         // ── Fair-use score derivation ────────────────────────────────────

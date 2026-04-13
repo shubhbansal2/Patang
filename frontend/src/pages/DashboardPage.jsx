@@ -12,6 +12,7 @@ import {
   CalendarDays,
   LoaderCircle
 } from 'lucide-react';
+import ConfirmModal from '../components/ui/ConfirmModal';
 
 /* ──────────────────────────────────────────────────────────────────────
    Helpers
@@ -83,6 +84,20 @@ const DashboardPage = () => {
   const [bookingFeedback, setBookingFeedback] = useState({ tone: '', message: '' });
   const [qrPreviewOpen, setQrPreviewOpen] = useState(false);
 
+  // Cancellation Modal State
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [bookingToCancel, setBookingToCancel] = useState(null);
+  const [cancelReason, setCancelReason] = useState('Schedule conflict');
+  const [cancelError, setCancelError] = useState('');
+  const [cancelLoading, setCancelLoading] = useState(false);
+
+  // Modify Modal State
+  const [showModifyModal, setShowModifyModal] = useState(false);
+  const [bookingToModify, setBookingToModify] = useState(null);
+  const [modifyCount, setModifyCount] = useState('');
+  const [modifyError, setModifyError] = useState('');
+  const [modifyLoading, setModifyLoading] = useState(false);
+
   const fetchDashboard = async ({ preserveLoading = false } = {}) => {
     if (!preserveLoading) {
       setLoading(true);
@@ -131,62 +146,78 @@ const DashboardPage = () => {
   const { subscriptions = [], upcomingBookings = [], fairUse = {}, penalties = {}, upcomingEvents = [] } = dashboard || {};
   const approvedSubscription = subscriptions.find((subscription) => subscription.status === 'Approved') || null;
 
-  const handleCancelBooking = async (booking) => {
-    const reason = window.prompt('Enter a cancellation reason for this booking:', 'Schedule conflict');
-    if (reason == null) return;
+  const handleCancelBooking = (booking) => {
+    setBookingToCancel(booking);
+    setCancelReason('Schedule conflict');
+    setCancelError('');
+    setShowCancelModal(true);
+  };
 
-    const trimmedReason = reason.trim();
-    if (!trimmedReason) return;
+  const confirmCancelBooking = async () => {
+    const trimmedReason = cancelReason.trim();
+    if (!trimmedReason) {
+      setCancelError('Please provide a reason for cancellation.');
+      return;
+    }
 
-    setBookingCancellationId(booking._id);
+    setCancelLoading(true);
+    setCancelError('');
     setBookingFeedback({ tone: '', message: '' });
 
     try {
-      if (booking.source === 'v2') {
-        await api.post(`/bookings/${booking._id}/cancel`, { reason: trimmedReason });
+      if (bookingToCancel.source === 'v2') {
+        await api.post(`/bookings/${bookingToCancel._id}/cancel`, { reason: trimmedReason });
       } else {
-        await api.delete(`/v2/bookings/${booking._id}`, {
+        await api.delete(`/v2/bookings/${bookingToCancel._id}`, {
           data: { reason: trimmedReason },
         });
       }
 
       await fetchDashboard({ preserveLoading: true });
+      setShowCancelModal(false);
+      setBookingToCancel(null);
       setBookingFeedback({
         tone: 'success',
-        message: `${booking.facilityName || 'Your facility booking'} was cancelled successfully.`,
+        message: `${bookingToCancel.facilityName || 'Your facility booking'} was cancelled successfully.`,
       });
     } catch (err) {
-      window.alert(err.response?.data?.error?.message || err.response?.data?.message || 'Could not cancel the booking.');
+      setCancelError(err.response?.data?.error?.message || err.response?.data?.message || 'Could not cancel the booking.');
     } finally {
-      setBookingCancellationId('');
+      setCancelLoading(false);
     }
   };
 
-  const handleModifyBooking = async (booking) => {
-    const defaultCount = String(booking.participantCount || 1);
-    const nextCount = window.prompt('Update the number of players attending:', defaultCount);
-    if (nextCount == null) return;
+  const handleModifyBooking = (booking) => {
+    setBookingToModify(booking);
+    setModifyCount(String(booking.participantCount || 1));
+    setModifyError('');
+    setShowModifyModal(true);
+  };
 
-    const participantCount = Number.parseInt(nextCount, 10);
+  const confirmModifyBooking = async () => {
+    const participantCount = Number.parseInt(modifyCount, 10);
     if (!Number.isFinite(participantCount) || participantCount < 1) {
-      window.alert('Please enter a valid number of players.');
+      setModifyError('Please enter a valid number of players (at least 1).');
       return;
     }
 
-    setBookingUpdateId(booking._id);
+    setModifyLoading(true);
+    setModifyError('');
     setBookingFeedback({ tone: '', message: '' });
 
     try {
-      await api.patch(`/bookings/${booking._id}`, { participantCount });
+      await api.patch(`/bookings/${bookingToModify._id}`, { participantCount });
       await fetchDashboard({ preserveLoading: true });
+      setShowModifyModal(false);
+      setBookingToModify(null);
       setBookingFeedback({
         tone: 'success',
-        message: `${booking.facilityName || 'Your booking'} was updated to ${participantCount} player${participantCount > 1 ? 's' : ''}.`,
+        message: `${bookingToModify.facilityName || 'Your booking'} was updated to ${participantCount} player${participantCount > 1 ? 's' : ''}.`,
       });
     } catch (err) {
-      window.alert(err.response?.data?.message || 'Could not update the booking.');
+      setModifyError(err.response?.data?.message || 'Could not update the booking.');
     } finally {
-      setBookingUpdateId('');
+      setModifyLoading(false);
     }
   };
 
@@ -336,7 +367,7 @@ const DashboardPage = () => {
                   </div>
                   <div className="flex items-center gap-3 flex-wrap">
                     <StatusBadge status={booking.status} />
-                    {booking.source === 'v2' ? (
+                    {booking.source === 'v2' && !['Expired', 'Completed', 'NoShow', 'expired', 'completed', 'no_show'].includes(booking.status) ? (
                       <button
                         type="button"
                         onClick={() => handleModifyBooking(booking)}
@@ -347,15 +378,17 @@ const DashboardPage = () => {
                         Modify
                       </button>
                     ) : null}
-                    <button
-                      type="button"
-                      onClick={() => handleCancelBooking(booking)}
-                      disabled={bookingCancellationId === booking._id || bookingUpdateId === booking._id}
-                      className="w-7 h-7 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center transition-colors"
-                      aria-label={`Cancel booking for ${booking.facilityName || 'facility'}`}
-                    >
-                      {bookingCancellationId === booking._id ? <LoaderCircle size={14} className="animate-spin" /> : <X size={14} />}
-                    </button>
+                    {!['Expired', 'Completed', 'NoShow', 'expired', 'completed', 'no_show'].includes(booking.status) ? (
+                      <button
+                        type="button"
+                        onClick={() => handleCancelBooking(booking)}
+                        disabled={bookingCancellationId === booking._id || bookingUpdateId === booking._id}
+                        className="w-7 h-7 rounded-full bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center transition-colors"
+                        aria-label={`Cancel booking for ${booking.facilityName || 'facility'}`}
+                      >
+                        {bookingCancellationId === booking._id ? <LoaderCircle size={14} className="animate-spin" /> : <X size={14} />}
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -508,6 +541,48 @@ const DashboardPage = () => {
         </div>
       </div>
     ) : null}
+
+    <ConfirmModal
+      isOpen={showCancelModal}
+      onClose={() => { if (!cancelLoading) { setShowCancelModal(false); setBookingToCancel(null); } }}
+      onConfirm={confirmCancelBooking}
+      title="Cancel Booking"
+      description={`Are you sure you want to cancel your booking for ${bookingToCancel?.facilityName || 'this facility'}? This action cannot be undone.`}
+      variant="danger"
+      confirmLabel="Cancel Booking"
+      cancelLabel="Keep Booking"
+      textAreaProps={{
+        label: 'Cancellation Reason',
+        value: cancelReason,
+        onChange: (e) => setCancelReason(e.target.value),
+        placeholder: 'E.g., Schedule conflict',
+        required: true
+      }}
+      loading={cancelLoading}
+      error={cancelError}
+    />
+
+    <ConfirmModal
+      isOpen={showModifyModal}
+      onClose={() => { if (!modifyLoading) { setShowModifyModal(false); setBookingToModify(null); } }}
+      onConfirm={confirmModifyBooking}
+      title="Modify Booking"
+      description={`Update the number of players for your booking at ${bookingToModify?.facilityName || 'this facility'}.`}
+      variant="success"
+      confirmLabel="Save Changes"
+      cancelLabel="Cancel"
+      inputProps={{
+        label: 'Number of Players (including you)',
+        type: 'number',
+        min: 1,
+        value: modifyCount,
+        onChange: (e) => setModifyCount(e.target.value),
+        placeholder: 'E.g., 2',
+        required: true
+      }}
+      loading={modifyLoading}
+      error={modifyError}
+    />
     </>
   );
 };

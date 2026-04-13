@@ -335,7 +335,14 @@ const HistoryPage = () => {
                           ● {record.isActive ? 'Active' : 'Resolved'}
                         </span>
                       ) : (
-                        <StatusBadge status={record.status} />
+                        <div className="flex flex-col items-start gap-1">
+                          <StatusBadge status={record.status} />
+                          {record.cancelledAt && (record.status.toLowerCase() === 'cancelled' || record.status.toLowerCase() === 'latecancelled') && (
+                            <span className="text-[10px] text-gray-400 font-medium whitespace-nowrap">
+                              on {fmtDate(record.cancelledAt)} at {fmtTime(record.cancelledAt)}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
 
