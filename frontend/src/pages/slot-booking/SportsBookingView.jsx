@@ -79,10 +79,13 @@ const SportsBookingView = ({
   const selectedCourt = data?.courtSlots?.find((court) => court.facilityId === selectedCourtId) || null;
   const selectedSlot = selectedCourt?.slots?.find((slot) => slot._id === selectedSlotId) || null;
   const reminderRule = data?.bookingRules?.find((rule) => rule.toLowerCase().includes('id card'));
+  const isGroupContext = Boolean(selectedSlot && selectedSlot.capacity > 1);
+  const isJoiningGroup = Boolean(selectedSlot && selectedSlot.status === 'Group Open');
+
   const canCreateGroupBooking = Boolean(
     selectedSlot &&
-      selectedSlot.status === 'Available' &&
-      selectedSlot.capacity > 1
+      (selectedSlot.status === 'Available' || selectedSlot.status === 'Group Open') &&
+      isGroupContext
   );
   const maxPlayerCount = selectedSlot?.capacity || 1;
   const bookable = isSlotBookable(selectedSlot?.status);
@@ -97,10 +100,12 @@ const SportsBookingView = ({
   }, [selectedSlotId, selectedCourtId, selectedSlot]);
 
   useEffect(() => {
-    if (!canCreateGroupBooking && isGroupBooking) {
+    if (isJoiningGroup) {
+      setIsGroupBooking(true);
+    } else if (!canCreateGroupBooking && isGroupBooking) {
       setIsGroupBooking(false);
     }
-  }, [canCreateGroupBooking, isGroupBooking]);
+  }, [canCreateGroupBooking, isGroupBooking, isJoiningGroup]);
 
   const bookingBlockedReason = (() => {
     if (!selectedSlot) return 'Select a slot to continue.';
@@ -141,7 +146,7 @@ const SportsBookingView = ({
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-1 xl:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.95fr)]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.95fr)]">
         <div className="space-y-6">
           <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -398,7 +403,7 @@ const SportsBookingView = ({
           </div>
         </div>
 
-        <aside className="space-y-6 xl:sticky xl:top-20 xl:self-start order-first xl:order-last">
+        <aside className="space-y-6 lg:sticky lg:top-8 self-start h-fit order-first lg:order-last">
           <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -447,21 +452,21 @@ const SportsBookingView = ({
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-gray-800">Group mode</p>
                         <p className="mt-1 text-xs text-gray-500">
-                          {canCreateGroupBooking ? 'Turn this on for shared bookings.' : 'Unavailable for this slot.'}
+                          {isJoiningGroup ? 'Joining an existing group.' : canCreateGroupBooking ? 'Turn this on for shared bookings.' : 'Unavailable for this slot.'}
                         </p>
                       </div>
                       <button
                         type="button"
                         aria-label={isGroupBooking ? 'Disable group booking' : 'Enable group booking'}
-                        onClick={() => canCreateGroupBooking && setIsGroupBooking((current) => !current)}
-                        disabled={!canCreateGroupBooking}
+                        onClick={() => canCreateGroupBooking && !isJoiningGroup && setIsGroupBooking((current) => !current)}
+                        disabled={!canCreateGroupBooking || isJoiningGroup}
                         className={`relative h-7 w-12 flex-shrink-0 rounded-full transition-colors ${
                           isGroupBooking ? 'bg-brand-500' : 'bg-gray-300'
-                        } ${canCreateGroupBooking ? '' : 'cursor-not-allowed opacity-50'} focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300`}
+                        } ${canCreateGroupBooking && !isJoiningGroup ? '' : 'cursor-not-allowed opacity-50'} focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-300`}
                       >
                         <span
-                          className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                            isGroupBooking ? 'translate-x-6' : 'translate-x-1'
+                          className={`absolute top-1 left-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                            isGroupBooking ? 'translate-x-5' : 'translate-x-0'
                           }`}
                         />
                       </button>
@@ -481,7 +486,8 @@ const SportsBookingView = ({
                           disabled={!selectedSlot}
                           className="w-full appearance-none rounded-2xl border border-gray-200 bg-white px-4 py-3 pr-12 text-sm font-medium text-gray-700 outline-none transition-colors focus:border-brand-400 focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
                         >
-                          {Array.from({ length: maxPlayerCount }, (_, index) => index + 1).map((count) => (
+                          {Array.from({ length: maxPlayerCount }, (_, index) => index + 1)
+                            .map((count) => (
                             <option key={count} value={count}>
                               {count} player{count > 1 ? 's' : ''}
                             </option>

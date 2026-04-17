@@ -160,7 +160,7 @@ const SubscriptionRegistrationView = ({
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-1 xl:grid-cols-[minmax(0,1.75fr)_300px]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.75fr)_300px]">
         <div className="space-y-6">
           {subscription ? (
             <InlineBanner
@@ -396,7 +396,7 @@ const SubscriptionRegistrationView = ({
           </form>
         </div>
 
-        <aside className="space-y-6 xl:sticky xl:top-20 xl:self-start">
+        <aside className="space-y-6 lg:sticky lg:top-8 self-start h-fit">
           <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between gap-3">
               <div>

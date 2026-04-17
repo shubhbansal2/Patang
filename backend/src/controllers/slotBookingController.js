@@ -222,10 +222,9 @@ export const getSportsBookingPage = async (req, res) => {
                 // Build the datetime for this slot on the selected date
                 const [startH, startM] = (slot.startTime || '06:00').split(':').map(Number);
                 const [endH, endM] = (slot.endTime || '07:00').split(':').map(Number);
-                const slotStart = new Date(dateBounds.start);
-                slotStart.setHours(startH, startM, 0, 0);
-                const slotEnd = new Date(dateBounds.start);
-                slotEnd.setHours(endH, endM, 0, 0);
+                const [year, month, day] = String(selectedDate).split('-').map(Number);
+                const slotStart = new Date(Date.UTC(year, month - 1, day, startH, startM - IST_OFFSET_MINUTES, 0, 0));
+                const slotEnd = new Date(Date.UTC(year, month - 1, day, endH, endM - IST_OFFSET_MINUTES, 0, 0));
 
                 const key = `${courtId}_${slotStart.toISOString()}`;
                 const bookings = bookingMap.get(key) || [];

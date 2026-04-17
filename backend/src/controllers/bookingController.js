@@ -11,9 +11,10 @@ const CANCELLABLE_STATUSES = ['confirmed', 'group_pending', 'waitlisted'];
 const FAIR_USE_WINDOW_IN_MS = 3 * 24 * 60 * 60 * 1000;
 
 const buildSlotDateTime = (bookingDate, timeString) => {
-    const date = new Date(bookingDate);
+    const dateStr = String(bookingDate).split('T')[0];
+    const [year, month, day] = dateStr.split('-').map(Number);
 
-    if (Number.isNaN(date.getTime())) {
+    if (!year || !month || !day) {
         return null;
     }
 
@@ -23,8 +24,8 @@ const buildSlotDateTime = (bookingDate, timeString) => {
         return null;
     }
 
-    date.setHours(hours, minutes, 0, 0);
-    return date;
+    const IST_OFFSET_MINUTES = 330;
+    return new Date(Date.UTC(year, month - 1, day, hours, minutes - IST_OFFSET_MINUTES, 0, 0));
 };
 
 const getQuotaWindow = (slotStartAt) => ({
@@ -237,6 +238,10 @@ export const createBooking = async (req, res) => {
 
         if (participantCount > slot.capacity) {
             return res.status(400).json({ message: 'participantCount cannot exceed the slot capacity' });
+        }
+
+        if (!isGroupBooking && participantCount < slot.minPlayersRequired) {
+            return res.status(400).json({ message: `A minimum of ${slot.minPlayersRequired} players is required to book this slot.` });
         }
 
         const practiceDate = getStartOfDay(bookingDate);
