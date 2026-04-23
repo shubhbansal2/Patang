@@ -9,7 +9,8 @@ import {
   User,
   Image as ImageIcon,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Clock3
 } from 'lucide-react';
 
 const SwimAdminRequestsPage = () => {
@@ -182,6 +183,11 @@ const SwimAdminRequestsPage = () => {
     });
   };
 
+  const formatSlotLabel = (slot) => {
+    if (!slot?.startTime || !slot?.endTime) return 'No slot selected';
+    return `${slot.startTime} - ${slot.endTime}`;
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div>
@@ -263,7 +269,7 @@ const SwimAdminRequestsPage = () => {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="flex items-start gap-3 text-sm text-gray-600">
                       <User size={16} className="text-gray-400 mt-0.5 shrink-0" />
                       <div>
@@ -280,6 +286,15 @@ const SwimAdminRequestsPage = () => {
                         {request.status === 'Approved' && request.endDate && (
                           <p className="text-xs text-blue-600 mt-0.5">Valid until: {formatDate(request.endDate)}</p>
                         )}
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3 text-sm text-gray-600">
+                      <Clock3 size={16} className="text-gray-400 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="font-semibold text-gray-800">Requested slot: {formatSlotLabel(request.slotId)}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {request.slotId?.capacity ? `Capacity ${request.slotId.capacity}` : 'Selected by student at application time'}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -406,6 +421,11 @@ const SwimAdminRequestsPage = () => {
                 <p className="text-sm text-gray-600">
                   You are about to <strong className={actionType === 'approve' ? 'text-blue-600' : 'text-red-600'}>{actionType}</strong> the {selectedRequest.facilityType} subscription for <strong>{selectedRequest.userId?.name}</strong>.
                 </p>
+
+                <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                  <span className="font-semibold text-gray-800">Requested slot:</span>{' '}
+                  {formatSlotLabel(selectedRequest.slotId)}
+                </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-gray-800 mb-2">
